@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa Interactivo — Circuito Europa 2027 (30 abr – 15 may)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .country-land {
+      fill: #e2e8f0;
+      stroke: #cbd5e1;
+      stroke-width: 0.75px;
+      transition: fill 0.2s ease;
+    }
+    .country-route {
+      fill: #f1f5f9;
+      stroke: #94a3b8;
+      stroke-width: 1px;
+    }
+    .leg-path {
+      fill: none;
+      stroke-linecap: round;
+      transition: opacity 0.25s ease, stroke-width 0.25s ease;
+      cursor: pointer;
+    }
+    .leg-path.dimmed {
+      opacity: 0.16;
+    }
+    .leg-path.active-leg {
+      filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.45));
+    }
+    .stop-node {
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .time-pill {
+      pointer-events: none;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+  <!-- Header & KPIs -->
+  <header class="bg-white border-b border-slate-200 px-4 py-3 sm:px-6">
+    <div class="max-w-7xl mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-900 text-white">30 abr – 15 may 2027</span>
+          <span class="text-xs font-medium text-slate-500">15 noches · Hub MAD</span>
+        </div>
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 mt-1">
+          Circuito Histórico-Arquitectónico: Italia, Oporto y Madrid
+        </h1>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Duración</div>
+          <div class="text-sm sm:text-base font-bold text-slate-900">15 noches</div>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wider text-blue-700 font-semibold">Tramos en tren</div>
+          <div class="text-sm sm:text-base font-bold text-blue-900" id="kpi-trains">7 tramos</div>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wider text-amber-700 font-semibold">Vuelos</div>
+          <div class="text-sm sm:text-base font-bold text-amber-900" id="kpi-flights">2 directos</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Tránsito neto</div>
+          <div class="text-sm sm:text-base font-bold text-slate-900" id="kpi-transit">19 h 58 min</div>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+          <div class="text-[11px] uppercase tracking-wider text-emerald-700 font-semibold">Transporte est.</div>
+          <div class="text-sm sm:text-base font-bold text-emerald-900" id="kpi-cost">€284 – €461</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+    <!-- Left/Top: Map Canvas + Controls -->
+    <section class="lg:col-span-8 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+
+      <!-- Map Toolbar -->
+      <div class="px-3 py-2.5 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2">
+        <!-- Mode Filters -->
+        <div class="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filtrar por transporte">
+          <button type="button" data-filter="all" class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white transition">Todos (9)</button>
+          <button type="button" data-filter="train" class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">Solo trenes (7)</button>
+          <button type="button" data-filter="flight" class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">Solo vuelos (2)</button>
+        </div>
+
+        <!-- Region Zoom Presets -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button type="button" data-preset="full" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">Ruta completa</button>
+          <button type="button" data-preset="italy" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">Italia</button>
+          <button type="button" data-preset="campania" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">Campania</button>
+          <button type="button" data-preset="iberia" class="preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">Ibérica</button>
+        </div>
+      </div>
+
+      <!-- Map Container -->
+      <div class="relative w-full bg-[#dbeafe]/40" style="height: 520px;">
+        <svg id="route-map" class="w-full h-full block select-none" aria-label="Mapa interactivo de la ruta europea"></svg>
+
+        <!-- Loading / Error Banner -->
+        <div id="map-status" class="absolute inset-0 flex items-center justify-center bg-white/85 backdrop-blur-sm text-sm font-medium text-slate-700">
+          Cargando cartografía vectorial de Europa...
+        </div>
+
+        <!-- Hover Tooltip -->
+        <div id="map-tooltip" class="hidden pointer-events-none absolute z-20 bg-slate-900/95 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg max-w-xs"></div>
+
+        <!-- Zoom Controls -->
+        <div class="absolute top-3 right-3 flex flex-col gap-1 bg-white/95 border border-slate-200 rounded-lg p-1 shadow-sm">
+          <button type="button" id="zoom-in" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 font-bold text-slate-700" title="Acercar">+</button>
+          <button type="button" id="zoom-out" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 font-bold text-slate-700" title="Alejar">−</button>
+          <button type="button" id="zoom-reset" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-xs font-semibold text-slate-600" title="Restablecer vista">1:1</button>
+        </div>
+
+        <!-- Legend -->
+        <div class="absolute bottom-3 left-3 bg-white/95 backdrop-blur border border-slate-200 rounded-lg px-3 py-2 shadow-sm text-xs flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-5 h-0.5 bg-blue-600"></span>
+            <span class="text-slate-700 font-medium">Tren Alta Velocidad</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-5 h-0.5 bg-emerald-600"></span>
+            <span class="text-slate-700 font-medium">Tren Regional / Celta</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-5 border-t-2 border-dashed border-amber-500"></span>
+            <span class="text-slate-700 font-medium">Vuelo directo</span>
+          </div>
+        </div>
+
+        <!-- Step Player Bar -->
+        <div class="absolute bottom-3 right-3 bg-white/95 backdrop-blur border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm flex items-center gap-1.5">
+          <button type="button" id="btn-prev" class="px-2 py-1 rounded text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">◀ Ant.</button>
+          <button type="button" id="btn-play" class="px-2.5 py-1 rounded text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition">▶ Recorrer</button>
+          <button type="button" id="btn-next" class="px-2 py-1 rounded text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">Sig. ▶</button>
+        </div>
+      </div>
+
+      <!-- Bottom Quick Route Strip -->
+      <div class="px-4 py-2.5 border-t border-slate-200 bg-white overflow-x-auto">
+        <div id="route-strip" class="flex items-center gap-1.5 min-w-max text-xs"></div>
+      </div>
+    </section>
+
+    <!-- Right: Interactive Detail & Leg Breakdown -->
+    <aside class="lg:col-span-4 flex flex-col gap-4">
+
+      <!-- Active Selection Card -->
+      <div id="detail-card" class="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">Detalle del tramo / parada</div>
+        <div id="detail-content" class="mt-2"></div>
+      </div>
+
+      <!-- Tabbed List: Legs vs Daily Breakdown -->
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden flex-1 min-h-[280px] max-h-[440px]">
+        <div class="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-1" role="tablist">
+            <button type="button" id="tab-legs" class="side-tab px-2.5 py-1 rounded-md text-xs font-bold bg-slate-900 text-white transition">Tramos (8)</button>
+            <button type="button" id="tab-days" class="side-tab px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 hover:bg-slate-200/70 transition">Por días (16)</button>
+          </div>
+          <span class="text-[11px] text-slate-500">Clic para enfocar</span>
+        </div>
+        <div id="legs-list" class="divide-y divide-slate-100 overflow-y-auto custom-scroll p-2 space-y-1"></div>
+        <div id="days-list" class="hidden divide-y divide-slate-100 overflow-y-auto custom-scroll p-2 space-y-1"></div>
+      </div>
+
+    </aside>
+  </main>
+
+  <script>
+    (function () {
+      const STOPS = [
+        {
+          id: 'madrid-start',
+          order: 1,
+          name: 'Madrid (Inicio)',
+          short: 'MAD',
+          country: 'España',
+          coords: [-3.7038, 40.4168],
+          dates: '30 abr – 2 may',
+          nights: 2,
+          focus: 'Aclimatación de baja fricción, Madrid de los Austrias y Paseo del Prado (1 de mayo festivo).',
+          coffee: 'HanSo Café · Hola Coffee Lagasca',
+          fitness: 'Revive (sauna finlandesa + fuerza) · Basic-Fit',
+          luggage: 'Check-in 15:00 / consigna de hotel al llegar de MEX.'
+        },
+        {
+          id: 'milan',
+          order: 2,
+          name: 'Milán',
+          short: 'MIL',
+          country: 'Italia',
+          coords: [9.1882, 45.4637],
+          dates: '2 – 4 may',
+          nights: 2,
+          focus: 'Estación Central monumental, Piazza San Sepolcro (1919), Plaza de Loreto (1945) y Navigli.',
+          coffee: 'Cafezal Porta Venezia · Orsonero Coffee',
+          fitness: "Gold's Gym / Plus1 Fitness · QC Termemilano (sauna en tranvía)",
+          luggage: 'Check-in 15:00 / Check-out 11:00.'
+        },
+        {
+          id: 'roma',
+          order: 3,
+          name: 'Roma',
+          short: 'ROM',
+          country: 'Italia',
+          coords: [12.4942, 41.8905],
+          dates: '4 – 7 may',
+          nights: 3,
+          focus: 'Coliseo, Foro Romano, Museo Storico della Liberazione (Via Tasso), Distrito EUR y Museos Capitolinos.',
+          coffee: 'Faro – Caffè Specialty · Luna by Faro',
+          fitness: 'Easy Fit Trastevere (pase diario sin certificado médico)',
+          luggage: 'Kipoint Roma Termini si el tren llega antes de las 15:00.'
+        },
+        {
+          id: 'napoles',
+          order: 4,
+          name: 'Nápoles',
+          short: 'NAP',
+          country: 'Italia',
+          coords: [14.2681, 40.8518],
+          dates: '7 – 9 may',
+          nights: 2,
+          focus: 'Spaccanapoli, Museo Arqueológico Nacional (MANN), Piazza del Plebiscito y Vomero.',
+          coffee: 'Espresso napolitano tradicional / barras locales',
+          fitness: 'Gimnasios con pase diario en centro/Vomero',
+          luggage: 'Check-in 15:00 / Check-out 11:00.'
+        },
+        {
+          id: 'pompeya',
+          order: 5,
+          name: 'Pompeya (Tránsito)',
+          short: 'POM',
+          country: 'Italia',
+          coords: [14.4869, 40.7508],
+          dates: '9 may (AM–PM)',
+          nights: 0,
+          focus: 'Inmersión arqueológica en el Parque Arqueológico de Pompeya (09:00–13:30) rumbo a Sorrento.',
+          coffee: 'Parada breve junto a estación Pompei Scavi',
+          fitness: 'Caminata intensa (~6–8 km sobre calzada romana)',
+          luggage: 'Depósito gratuito oficial en entrada Porta Marina / consigna en estación.'
+        },
+        {
+          id: 'sorrento',
+          order: 6,
+          name: 'Sorrento',
+          short: 'SOR',
+          country: 'Italia',
+          coords: [14.3758, 40.6263],
+          dates: '9 – 11 may',
+          nights: 2,
+          focus: 'Acantilados, Marina Piccola, Vallone dei Mulini y día completo de recuperación.',
+          coffee: 'Terrazas locales del centro histórico',
+          fitness: 'Natación y caminata costera hacia Punta del Capo',
+          luggage: 'Check-in 15:00 / Check-out 11:00.'
+        },
+        {
+          id: 'oporto',
+          order: 7,
+          name: 'Oporto',
+          short: 'OPO',
+          country: 'Portugal',
+          coords: [-8.6110, 41.1496],
+          dates: '11 – 14 may',
+          nights: 3,
+          focus: 'Fundación Serralves (Siza Vieira), Casa da Música (Koolhaas), Palácio da Bolsa y Ribeira.',
+          coffee: "Senzu Coffee Roasters · C'alma Coffee Room · 7g Roaster",
+          fitness: 'Fitness Hut (TrainAway) · El Spa Meliá Porto (sauna finlandesa)',
+          luggage: 'Llegada vespertina directa a habitación; check-out 11:00 el 14 may.'
+        },
+        {
+          id: 'vigo',
+          order: 8,
+          name: 'Vigo (Transbordo)',
+          short: 'VGO',
+          country: 'España',
+          coords: [-8.7226, 42.2328],
+          dates: '14 may (escala)',
+          nights: 0,
+          focus: 'Enlace ferroviario entre Tren Celta (Vigo Guixar) y AVE/Alvia (Vigo Urzáiz).',
+          coffee: 'Pausa rápida entre estaciones (45–60 min margen)',
+          fitness: 'Caminata de 15 min entre Guixar y Urzáiz (o 5 min en taxi)',
+          luggage: 'Equipaje contigo durante el transbordo.'
+        },
+        {
+          id: 'madrid-end',
+          order: 9,
+          name: 'Madrid (Cierre)',
+          short: 'MAD',
+          country: 'España',
+          coords: [-3.7038, 40.4168],
+          dates: '14 – 15 may',
+          nights: 1,
+          focus: 'Noche colchón junto a Chamartín / Línea 8 antes del vuelo transatlántico del sábado 15.',
+          coffee: 'Desayuno temprano antes de ir a MAD',
+          fitness: 'Descanso pre-vuelo intercontinental',
+          luggage: 'Traslado a MAD con 3 h de antelación.'
+        }
+      ];
+
+      const LEGS = [
+        {
+          id: 'leg-1',
+          index: 1,
+          from: 'madrid-start',
+          to: 'milan',
+          date: 'Dom 2 may',
+          mode: 'flight',
+          modeLabel: 'Vuelo directo (MAD → LIN/MXP)',
+          transitTime: '2 h 10 min',
+          doorToDoor: '5 h – 5 h 30 min',
+          cost: '€62 – €109',
+          transitMinutes: 130,
+          notes: 'Air Europa (€62) o Iberia (€109) base. Incluye traslado a MAD (35 min), 2 h de seguridad y traslado en Milán (LIN 20 min / MXP €15).'
+        },
+        {
+          id: 'leg-2',
+          index: 2,
+          from: 'milan',
+          to: 'roma',
+          date: 'Mar 4 may',
+          mode: 'highspeed',
+          modeLabel: 'Tren AV Frecciarossa No Stop',
+          transitTime: '2 h 50 min',
+          doorToDoor: '3 h 45 min',
+          cost: '€30 – €55',
+          transitMinutes: 170,
+          notes: 'Milano Centrale → Roma Termini directo. Tarifas anticipadas en Italo / Trenitalia.'
+        },
+        {
+          id: 'leg-3',
+          index: 3,
+          from: 'roma',
+          to: 'napoles',
+          date: 'Vie 7 may',
+          mode: 'highspeed',
+          modeLabel: 'Tren AV Frecciarossa / Italo',
+          transitTime: '1 h 08 min',
+          doorToDoor: '1 h 50 min',
+          cost: '€15 – €25',
+          transitMinutes: 68,
+          notes: 'Roma Termini → Napoli Centrale. Sin controles aeroportuarios.'
+        },
+        {
+          id: 'leg-4',
+          index: 4,
+          from: 'napoles',
+          to: 'pompeya',
+          date: 'Dom 9 may',
+          mode: 'regional',
+          modeLabel: 'Tren Circumvesuviana / Campania Exp.',
+          transitTime: '40 min',
+          doorToDoor: '1 h 00 min',
+          cost: '€3.30 – €8',
+          transitMinutes: 40,
+          notes: 'Salida desde Porta Nolana / Garibaldi hasta Pompei Scavi (junto a Porta Marina).'
+        },
+        {
+          id: 'leg-5',
+          index: 5,
+          from: 'pompeya',
+          to: 'sorrento',
+          date: 'Dom 9 may',
+          mode: 'regional',
+          modeLabel: 'Tren Circumvesuviana / Campania Exp.',
+          transitTime: '30 min',
+          doorToDoor: '45 min',
+          cost: '€4.60 – €7',
+          transitMinutes: 30,
+          notes: 'Trayecto costero tras recoger el equipaje en la consigna de Pompeya.'
+        },
+        {
+          id: 'leg-6',
+          index: 6,
+          from: 'sorrento',
+          to: 'roma',
+          date: 'Mar 11 may',
+          mode: 'highspeed',
+          modeLabel: 'Trenes Sorrento → Nápoles → Roma FCO',
+          transitTime: '2 h 50 min',
+          doorToDoor: '3 h 45 min',
+          cost: '€34 – €44',
+          transitMinutes: 170,
+          notes: 'Circumvesuviana a Nápoles (€4.60, 1 h 10 min) + Frecciarossa/Italo a Roma Termini (€15–€25, 1 h 08 min) + Leonardo Express a FCO (€14, 32 min).'
+        },
+        {
+          id: 'leg-7',
+          index: 7,
+          from: 'roma',
+          to: 'oporto',
+          date: 'Mar 11 may',
+          mode: 'flight',
+          modeLabel: 'Vuelo directo (FCO → OPO)',
+          transitTime: '3 h 05 min',
+          doorToDoor: '5 h 35 min',
+          cost: '€50 – €68',
+          transitMinutes: 185,
+          notes: 'Vuelo directo diario desde Roma Fiumicino con Wizz Air (€50) o Ryanair (€68). Incluye 2 h de seguridad y -1 h de huso horario al llegar a Oporto.'
+        },
+        {
+          id: 'leg-8',
+          index: 8,
+          from: 'oporto',
+          to: 'vigo',
+          date: 'Vie 14 may',
+          mode: 'regional',
+          modeLabel: 'Tren Celta (Campanhã → Vigo Guixar)',
+          transitTime: '2 h 20 min',
+          doorToDoor: '3 h 15 min',
+          cost: '€15 – €25',
+          transitMinutes: 140,
+          notes: 'Cruce fronterizo por el Miño (+1 h huso al entrar a España) + 15 min a pie o 5 min en taxi a Vigo Urzáiz.'
+        },
+        {
+          id: 'leg-9',
+          index: 9,
+          from: 'vigo',
+          to: 'madrid-end',
+          date: 'Vie 14 may',
+          mode: 'highspeed',
+          modeLabel: 'Tren AVE / Alvia (Vigo → Chamartín)',
+          transitTime: '4 h 30 min',
+          doorToDoor: '5 h 15 min',
+          cost: '€35 – €65',
+          transitMinutes: 270,
+          notes: 'Tramo de alta velocidad Galicia–Madrid (desde €35.30 anticipado) llegando directo a Chamartín.'
+        }
+      ];
+
+      const DAYS = [
+        { id: 'd1', num: 1, date: 'Vie 30 abr', city: 'Madrid', stopId: 'madrid-start', legId: null, am: 'Aterrizaje en MAD, traslado y paseo suave por Madrid de los Austrias.', pm: 'Café en HanSo Café, caminata por el Retiro y cena temprana.', transit: 'MAD → Centro (35–45 min).', notes: 'Check-in 15:00 / consigna de hotel.' },
+        { id: 'd2', num: 2, date: 'Sáb 1 may', city: 'Madrid', stopId: 'madrid-start', legId: null, am: 'Arquitectura exterior: Paseo del Prado y Salamanca (festivo).', pm: 'Hola Coffee Lagasca + fuerza y sauna finlandesa en Revive / Basic-Fit.', transit: 'Metro y caminata (15–25 min).', notes: '1 de mayo festivo: museos cerrados.' },
+        { id: 'd3', num: 3, date: 'Dom 2 may', city: 'Madrid → Milán', stopId: 'milan', legId: 'leg-1', am: 'Check-out y traslado a MAD para vuelo directo a Milán.', pm: 'Llegada a Milán, check-in y caminata por los canales de Navigli.', transit: 'Vuelo 2 h 10 min | P2P: 5 h – 5 h 30 min.', notes: 'Volar a Linate (LIN) ahorra tiempo urbano.' },
+        { id: 'd4', num: 4, date: 'Lun 3 may', city: 'Milán', stopId: 'milan', legId: null, am: 'Estación Central, Piazza San Sepolcro (1919) y Plaza de Loreto (1945).', pm: "Cafezal Porta Venezia + fuerza en Gold's Gym/Plus1 + sauna en QC Termemilano.", transit: 'Metro M1/M3 (20 min).', notes: 'Reservar QC Termemilano con antelación.' },
+        { id: 'd5', num: 5, date: 'Mar 4 may', city: 'Milán → Roma', stopId: 'roma', legId: 'leg-2', am: 'Café en Orsonero Coffee, check-out y Frecciarossa No Stop a Roma.', pm: 'Check-in en Roma y caminata: Panteón, Piazza Navona y Largo Argentina.', transit: 'Tren AV 2 h 50 min | P2P: 3 h 45 min.', notes: 'Consigna en Kipoint Termini si llegas antes de las 15:00.' },
+        { id: 'd6', num: 6, date: 'Mié 5 may', city: 'Roma', stopId: 'roma', legId: null, am: 'Coliseo, Foro Romano, Palatino (08:30) y Museo Storico della Liberazione.', pm: 'Café en Faro + fuerza en Easy Fit Trastevere (sin certificado) y cena.', transit: 'Metro B + Tranvía 8 (18–20 min).', notes: 'Reservar Coliseo exactamente 30 días antes.' },
+        { id: 'd7', num: 7, date: 'Jue 6 may', city: 'Roma', stopId: 'roma', legId: null, am: 'Distrito racionalista EUR (Palazzo della Civiltà Italiana y ejes).', pm: 'Museos Capitolinos (hasta 19:30), Ara Pacis y café en Luna by Faro.', transit: 'Metro B a EUR Palasport (20 min).', notes: 'Capitolinos abren todos los días.' },
+        { id: 'd8', num: 8, date: 'Vie 7 may', city: 'Roma → Nápoles', stopId: 'napoles', legId: 'leg-3', am: 'Mañana ligera (Testaccio / Caracalla), check-out y tren AV a Nápoles.', pm: 'Check-in, Spaccanapoli, Capilla Sansevero, Chiaia y pizza napolitana.', transit: 'Tren AV 1 h 08 min | P2P: 1 h 50 min.', notes: 'Consigna en hotel si llegas al mediodía.' },
+        { id: 'd9', num: 9, date: 'Sáb 8 may', city: 'Nápoles', stopId: 'napoles', legId: null, am: 'Museo Arqueológico Nacional (MANN) y Piazza del Plebiscito.', pm: 'Fuerza en gimnasio local (pase diario) y atardecer en Vomero / Sant’Elmo.', transit: 'Metro Línea 1 (15–20 min).', notes: 'MANN abre con horario completo en sábado.' },
+        { id: 'd10', num: 10, date: 'Dom 9 may', city: 'Nápoles → Pompeya → Sorrento', stopId: 'pompeya', legId: 'leg-4', am: 'Tren a Pompeya e inmersión arqueológica total (09:00–13:30).', pm: 'Tren a Sorrento, check-in, acantilados y atardecer en Marina Piccola.', transit: 'Tren 40 min + 30 min | P2P total: ~1 h 45 min.', notes: 'Guardar maletas en depósito Porta Marina.' },
+        { id: 'd11', num: 11, date: 'Lun 10 may', city: 'Sorrento', stopId: 'sorrento', legId: null, am: 'Mañana sin prisas: centro histórico, Vallone dei Mulini y miradores.', pm: 'Descanso activo: natación, caminata costera a Punta del Capo y cena.', transit: 'A pie o bus SITA local (10–20 min).', notes: 'Día colchón para bajar fatiga.' },
+        { id: 'd12', num: 12, date: 'Mar 11 may', city: 'Sorrento → Roma FCO → Oporto', stopId: 'oporto', legId: 'leg-7', am: 'Tren Sorrento–Nápoles–Roma Termini + Leonardo Express a FCO para vuelo directo a Oporto.', pm: 'Llegada a Oporto, check-in y caminata vespertina por Ribeira y Ponte Luís I.', transit: 'Trenes + vuelo 3 h 05 min | P2P: ~7 h 45 min | Est.: €84–€112.', notes: 'Wizz Air €50 / Ryanair €68 directo desde FCO (-1 h huso).' },
+        { id: 'd13', num: 13, date: 'Mié 12 may', city: 'Oporto', stopId: 'oporto', legId: null, am: 'Fundación Serralves (Siza Vieira) y visita guiada a Casa da Música (Koolhaas).', pm: 'Senzu Coffee + fuerza en Fitness Hut + sauna finlandesa en El Spa Meliá.', transit: 'Tranvía/bus o Uber (15–25 min).', notes: 'Reservar visita guiada a Casa da Música.' },
+        { id: 'd14', num: 14, date: 'Jue 13 may', city: 'Oporto', stopId: 'oporto', legId: null, am: 'Palácio da Bolsa, Iglesia de São Francisco, São Bento y Catedral de la Sé.', pm: "Café en C'alma o 7g Roaster (Gaia) y tarde de lectura en Cedofeita.", transit: 'A pie (3–5 km); cruce a Gaia (15 min).', notes: 'Reservar horario fijo en Palácio da Bolsa.' },
+        { id: 'd15', num: 15, date: 'Vie 14 may', city: 'Oporto → Vigo → Madrid', stopId: 'vigo', legId: 'leg-8', am: 'Check-out temprano y Tren Celta de Porto Campanhã a Vigo Guixar.', pm: 'Transbordo en Vigo a Urzáiz y AVE/Alvia a Madrid Chamartín.', transit: 'Celta 2 h 20 min + AVE 4 h 30 min | P2P: ~8 h 30 min.', notes: 'Margen de 45–60 min en Vigo; +1 h huso.' },
+        { id: 'd16', num: 16, date: 'Sáb 15 may', city: 'Madrid (Salida)', stopId: 'madrid-end', legId: null, am: 'Traslado al Aeropuerto MAD con 3 h de antelación para vuelo a México.', pm: 'Vuelo transatlántico de regreso.', transit: 'Hotel → MAD (15–30 min en taxi/Metro L8).', notes: 'Check-out 11:00 o antes según vuelo.' }
+      ];
+
+      const state = {
+        filter: 'all',
+        sideTab: 'legs',
+        selectedStopId: null,
+        selectedLegId: 'leg-1',
+        selectedDayId: null,
+        hoveredLegId: null,
+        playing: false,
+        playTimer: null
+      };
+
+      const stopById = Object.fromEntries(STOPS.map(s => [s.id, s]));
+
+      const svg = d3.select('#route-map');
+      const mapContainer = document.getElementById('route-map').parentElement;
+      const statusEl = document.getElementById('map-status');
+      let width = mapContainer.clientWidth || 800;
+      let height = mapContainer.clientHeight || 520;
+
+      svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+      const gRoot = svg.append('g');
+      const gCountries = gRoot.append('g');
+      const gLegs = gRoot.append('g');
+      const gLabels = gRoot.append('g');
+      const gStops = gRoot.append('g');
+
+      const projection = d3.geoMercator()
+        .center([3.5, 42.2])
+        .scale(Math.min(width, height) * 2.55)
+        .translate([width / 2, height / 2]);
+
+      const pathGen = d3.geoPath().projection(projection);
+
+      function updateZoomVisibility(k) {
+        gStops.selectAll('circle.node-dot').attr('r', d => (d.id === 'pompeya' || d.id === 'vigo' ? 5 : 7) / Math.pow(k, 0.55));
+        gStops.selectAll('text.node-label')
+          .style('font-size', `${10.5 / Math.pow(k, 0.55)}px`)
+          .style('opacity', d => {
+            if (state.selectedStopId === d.id) return 1;
+            if ((d.id === 'pompeya' || d.id === 'sorrento' || d.id === 'vigo') && k < 2.2) return 0;
+            return 1;
+          });
+        gLabels.selectAll('g.time-pill')
+          .style('opacity', d => {
+            if (state.selectedLegId === d.id || state.hoveredLegId === d.id) return 1;
+            if (d.id === 'leg-4' || d.id === 'leg-5') return k >= 5.2 ? 0.95 : 0;
+            if (d.id === 'leg-3' || d.id === 'leg-6') return k >= 2.6 ? 0.95 : 0;
+            return 0.95;
+          });
+        gLabels.selectAll('text.pill-text').style('font-size', `${9 / Math.pow(k, 0.6)}px`);
+        gLegs.selectAll('path.leg-path').style('stroke-width', d => (state.selectedLegId === d.id || state.hoveredLegId === d.id ? 4 : 2.4) / Math.pow(k, 0.5));
+      }
+
+      const zoom = d3.zoom()
+        .scaleExtent([0.8, 18])
+        .on('zoom', (event) => {
+          gRoot.attr('transform', event.transform);
+          updateZoomVisibility(event.transform.k);
+        });
+
+      svg.call(zoom);
+
+      function curvedArc(p1, p2) {
+        const dx = p2[0] - p1[0];
+        const dy = p2[1] - p1[1];
+        const dr = Math.sqrt(dx * dx + dy * dy) * 1.25;
+        return `M${p1[0]},${p1[1]}A${dr},${dr} 0 0,1 ${p2[0]},${p2[1]}`;
+      }
+
+      function straightLine(p1, p2) {
+        return `M${p1[0]},${p1[1]}L${p2[0]},${p2[1]}`;
+      }
+
+      function modeMatchesFilter(mode) {
+        if (state.filter === 'all') return true;
+        if (state.filter === 'flight') return mode === 'flight';
+        return mode === 'highspeed' || mode === 'regional';
+      }
+
+      function modeColor(mode) {
+        if (mode === 'flight') return '#f59e0b';
+        if (mode === 'highspeed') return '#2563eb';
+        return '#059669';
+      }
+
+      function zoomToBounds(coordsList, paddingFactor = 0.65) {
+        const pts = coordsList.map(c => projection(c));
+        const xs = pts.map(p => p[0]);
+        const ys = pts.map(p => p[1]);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const dx = Math.max(maxX - minX, 30);
+        const dy = Math.max(maxY - minY, 30);
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        const scale = Math.max(0.9, Math.min(14, paddingFactor / Math.max(dx / width, dy / height)));
+        const translate = [width / 2 - scale * cx, height / 2 - scale * cy];
+        svg.transition().duration(650).call(
+          zoom.transform,
+          d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+        );
+      }
+
+      const tooltipEl = document.getElementById('map-tooltip');
+
+      function showTooltip(event, htmlText) {
+        const rect = mapContainer.getBoundingClientRect();
+        tooltipEl.innerHTML = htmlText;
+        tooltipEl.classList.remove('hidden');
+        const x = Math.min(rect.width - 210, Math.max(10, event.clientX - rect.left + 12));
+        const y = Math.min(rect.height - 60, Math.max(10, event.clientY - rect.top - 12));
+        tooltipEl.style.left = x + 'px';
+        tooltipEl.style.top = y + 'px';
+      }
+
+      function hideTooltip() {
+        tooltipEl.classList.add('hidden');
+      }
+
+      function renderRoute() {
+        const k = d3.zoomTransform(svg.node()).k || 1;
+        // Draw legs
+        const legsSel = gLegs.selectAll('path.leg-path').data(LEGS, d => d.id);
+        legsSel.join(
+          enter => enter.append('path')
+            .attr('class', 'leg-path')
+            .on('click', (event, d) => {
+              event.stopPropagation();
+              selectLeg(d.id);
+            })
+            .on('mousemove', (event, d) => {
+              state.hoveredLegId = d.id;
+              updateZoomVisibility(d3.zoomTransform(svg.node()).k || 1);
+              showTooltip(event, `<strong>${stopById[d.from].name} → ${stopById[d.to].name}</strong><br>${d.modeLabel} · ${d.transitTime} (${d.cost})`);
+            })
+            .on('mouseleave', () => {
+              state.hoveredLegId = null;
+              updateZoomVisibility(d3.zoomTransform(svg.node()).k || 1);
+              hideTooltip();
+            }),
+          update => update,
+          exit => exit.remove()
+        )
+        .attr('d', d => {
+          const p1 = projection(stopById[d.from].coords);
+          const p2 = projection(stopById[d.to].coords);
+          if (d.mode === 'flight' || d.id === 'leg-6') return curvedArc(p1, p2);
+          return straightLine(p1, p2);
+        })
+        .attr('stroke', d => modeColor(d.mode))
+        .attr('stroke-dasharray', d => d.mode === 'flight' ? '6,5' : (d.id === 'leg-6' ? '4,3' : null))
+        .classed('dimmed', d => !modeMatchesFilter(d.mode))
+        .classed('active-leg', d => state.selectedLegId === d.id);
+
+        // Draw time labels at midpoints (decluttered automatically by zoom level)
+        const visibleLabels = LEGS.filter(d => modeMatchesFilter(d.mode));
+        const labelSel = gLabels.selectAll('g.time-pill').data(visibleLabels, d => d.id);
+        const labelEnter = labelSel.enter().append('g').attr('class', 'time-pill');
+        labelEnter.append('rect').attr('rx', 4).attr('ry', 4);
+        labelEnter.append('text').attr('class', 'pill-text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central');
+
+        labelSel.merge(labelEnter)
+          .attr('transform', d => {
+            const p1 = projection(stopById[d.from].coords);
+            const p2 = projection(stopById[d.to].coords);
+            let mx = (p1[0] + p2[0]) / 2;
+            let my = (p1[1] + p2[1]) / 2;
+            if (d.mode === 'flight') my -= 20;
+            if (d.id === 'leg-6') { mx -= 22; my += 6; }
+            if (d.id === 'leg-3') { mx += 16; my -= 6; }
+            if (d.id === 'leg-4') { mx += 22; my -= 8; }
+            if (d.id === 'leg-5') { mx += 24; my += 10; }
+            return `translate(${mx}, ${my})`;
+          });
+
+        labelSel.merge(labelEnter).select('text.pill-text')
+          .text(d => `${d.mode === 'flight' ? '✈' : '🚆'} ${d.transitTime}`)
+          .style('font-weight', '600')
+          .style('fill', d => state.selectedLegId === d.id ? '#ffffff' : '#1e293b');
+
+        labelSel.merge(labelEnter).each(function (d) {
+          const textNode = d3.select(this).select('text').node();
+          const bbox = textNode.getBBox();
+          d3.select(this).select('rect')
+            .attr('x', bbox.x - 5)
+            .attr('y', bbox.y - 2.5)
+            .attr('width', bbox.width + 10)
+            .attr('height', bbox.height + 5)
+            .attr('fill', state.selectedLegId === d.id ? '#0f172a' : 'rgba(255,255,255,0.92)')
+            .attr('stroke', state.selectedLegId === d.id ? '#0f172a' : '#cbd5e1')
+            .attr('stroke-width', 0.8);
+        });
+
+        labelSel.exit().remove();
+
+        // Draw unique city nodes with non-overlapping label placement
+        const uniqueNodes = STOPS.filter(s => s.id !== 'madrid-end');
+        const stopSel = gStops.selectAll('g.stop-node').data(uniqueNodes, d => d.id);
+        const stopEnter = stopSel.enter().append('g')
+          .attr('class', 'stop-node')
+          .on('click', (event, d) => {
+            event.stopPropagation();
+            selectStop(d.id);
+          })
+          .on('mousemove', (event, d) => {
+            showTooltip(event, `<strong>${d.order}. ${d.name}</strong><br>${d.dates}${d.nights > 0 ? ` (${d.nights}n)` : ''}`);
+          })
+          .on('mouseleave', hideTooltip);
+
+        stopEnter.append('circle').attr('class', 'node-dot');
+        stopEnter.append('text').attr('class', 'node-label');
+
+        stopSel.merge(stopEnter)
+          .attr('transform', d => {
+            const p = projection(d.coords);
+            return `translate(${p[0]}, ${p[1]})`;
+          });
+
+        stopSel.merge(stopEnter).select('circle.node-dot')
+          .attr('fill', d => state.selectedStopId === d.id ? '#2563eb' : (d.nights === 0 ? '#10b981' : '#0f172a'))
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 2);
+
+        stopSel.merge(stopEnter).select('text.node-label')
+          .attr('dx', d => (d.id === 'oporto' || d.id === 'vigo' || d.id === 'roma' || d.id === 'sorrento') ? -9 : 9)
+          .attr('dy', d => d.id === 'sorrento' ? 11 : (d.id === 'milan' ? -8 : 4))
+          .attr('text-anchor', d => (d.id === 'oporto' || d.id === 'vigo' || d.id === 'roma' || d.id === 'sorrento') ? 'end' : 'start')
+          .text(d => d.id === 'madrid-start' ? '1/9. Madrid (MAD)' : `${d.order}. ${d.name.replace(' (Tránsito)', '').replace(' (Transbordo)', '')}`)
+          .style('font-weight', '700')
+          .style('fill', '#0f172a')
+          .style('paint-order', 'stroke')
+          .style('stroke', '#ffffff')
+          .style('stroke-width', '3px');
+
+        stopSel.exit().remove();
+        updateZoomVisibility(k);
+      }
+
+      function renderDetailPanel() {
+        const el = document.getElementById('detail-content');
+        if (state.selectedDayId) {
+          const day = DAYS.find(d => d.id === state.selectedDayId);
+          el.innerHTML = `
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-900 text-white">Día ${day.num} · ${day.date}</span>
+              <span class="text-xs font-semibold text-blue-700">${day.city}</span>
+            </div>
+            <div class="mt-3 space-y-2 text-xs text-slate-700">
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Bloque AM</div>
+                <p class="mt-0.5 text-slate-800">${day.am}</p>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Bloque PM y Mantenimiento</div>
+                <p class="mt-0.5 text-slate-800">${day.pm}</p>
+              </div>
+              <p><strong>Traslado:</strong> ${day.transit}</p>
+              <p><strong>Notas:</strong> ${day.notes}</p>
+            </div>
+          `;
+        } else if (state.selectedLegId) {
+          const leg = LEGS.find(l => l.id === state.selectedLegId);
+          const fromStop = stopById[leg.from];
+          const toStop = stopById[leg.to];
+          const badgeCls = leg.mode === 'flight'
+            ? 'bg-amber-100 text-amber-800 border-amber-200'
+            : (leg.mode === 'highspeed' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200');
+
+          el.innerHTML = `
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${badgeCls}">${leg.modeLabel}</span>
+              <span class="text-xs font-semibold text-slate-500">${leg.date}</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mt-2">${fromStop.name} → ${toStop.name}</h3>
+            <div class="grid grid-cols-3 gap-2 mt-3">
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2">
+                <div class="text-[10px] text-slate-500 font-medium">En ruta</div>
+                <div class="text-xs sm:text-sm font-bold text-slate-900">${leg.transitTime}</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2">
+                <div class="text-[10px] text-slate-500 font-medium">Puerta a puerta</div>
+                <div class="text-xs sm:text-sm font-bold text-slate-900">${leg.doorToDoor}</div>
+              </div>
+              <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2">
+                <div class="text-[10px] text-emerald-700 font-medium">Costo est.</div>
+                <div class="text-xs sm:text-sm font-bold text-emerald-900">${leg.cost}</div>
+              </div>
+            </div>
+            <p class="text-xs text-slate-600 mt-3 leading-relaxed">${leg.notes}</p>
+            <div class="mt-3 pt-3 border-t border-slate-100">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">En destino (${toStop.name})</div>
+              <p class="text-xs text-slate-700 mt-1"><strong>Foco:</strong> ${toStop.focus}</p>
+              <p class="text-xs text-slate-700 mt-1"><strong>Café:</strong> ${toStop.coffee}</p>
+              <p class="text-xs text-slate-700 mt-1"><strong>Físico:</strong> ${toStop.fitness}</p>
+            </div>
+          `;
+        } else if (state.selectedStopId) {
+          const stop = stopById[state.selectedStopId];
+          el.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-900 text-white">Parada #${stop.order} · ${stop.country}</span>
+              <span class="text-xs font-semibold text-slate-500">${stop.dates} (${stop.nights} noches)</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mt-2">${stop.name}</h3>
+            <div class="mt-3 space-y-1.5 text-xs text-slate-700">
+              <p><strong>Historia y Arquitectura:</strong> ${stop.focus}</p>
+              <p><strong>Café de especialidad:</strong> ${stop.coffee}</p>
+              <p><strong>Gimnasio / Sauna:</strong> ${stop.fitness}</p>
+              <p><strong>Equipaje y Hotel:</strong> ${stop.luggage}</p>
+            </div>
+          `;
+        }
+      }
+
+      function renderLegsList() {
+        const container = document.getElementById('legs-list');
+        const filtered = LEGS.filter(l => modeMatchesFilter(l.mode));
+        container.innerHTML = filtered.map(leg => {
+          const fromStop = stopById[leg.from];
+          const toStop = stopById[leg.to];
+          const isActive = state.selectedLegId === leg.id;
+          const dotColor = leg.mode === 'flight' ? 'bg-amber-500' : (leg.mode === 'highspeed' ? 'bg-blue-600' : 'bg-emerald-600');
+          return `
+            <button type="button" data-leg-id="${leg.id}" class="leg-item w-full text-left px-3 py-2.5 rounded-lg transition flex items-start justify-between gap-2 ${isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-800'}">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full shrink-0 ${dotColor}"></span>
+                  <span class="text-xs font-bold truncate">${leg.index}. ${fromStop.short} → ${toStop.short}</span>
+                  <span class="text-[11px] ${isActive ? 'text-slate-300' : 'text-slate-400'}">${leg.date}</span>
+                </div>
+                <div class="text-[11px] mt-0.5 truncate ${isActive ? 'text-slate-300' : 'text-slate-500'}">${leg.modeLabel}</div>
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-xs font-bold">${leg.transitTime}</div>
+                <div class="text-[10px] font-semibold ${isActive ? 'text-emerald-300' : 'text-emerald-700'}">${leg.cost}</div>
+              </div>
+            </button>
+          `;
+        }).join('');
+      }
+
+      function renderDaysList() {
+        const container = document.getElementById('days-list');
+        container.innerHTML = DAYS.map(day => {
+          const isActive = state.selectedDayId === day.id;
+          return `
+            <button type="button" data-day-id="${day.id}" class="day-item w-full text-left px-3 py-2.5 rounded-lg transition ${isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-800'}">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold">Día ${day.num} · ${day.date}</span>
+                <span class="text-[11px] font-semibold ${isActive ? 'text-blue-300' : 'text-blue-700'}">${day.city}</span>
+              </div>
+              <div class="text-[11px] mt-1 line-clamp-1 ${isActive ? 'text-slate-300' : 'text-slate-500'}">${day.am}</div>
+              <div class="text-[10px] mt-0.5 ${isActive ? 'text-slate-400' : 'text-slate-400'}">${day.transit}</div>
+            </button>
+          `;
+        }).join('');
+      }
+
+      function selectDay(dayId) {
+        const day = DAYS.find(d => d.id === dayId);
+        if (!day) return;
+        state.selectedDayId = dayId;
+        if (day.legId) {
+          state.selectedLegId = day.legId;
+          state.selectedStopId = null;
+          const leg = LEGS.find(l => l.id === day.legId);
+          if (leg) zoomToBounds([stopById[leg.from].coords, stopById[leg.to].coords], 0.52);
+        } else {
+          state.selectedLegId = null;
+          state.selectedStopId = day.stopId;
+          const stop = stopById[day.stopId];
+          if (stop) zoomToBounds([stop.coords], 0.42);
+        }
+        renderRoute();
+        renderDetailPanel();
+        renderLegsList();
+        renderDaysList();
+        renderRouteStrip();
+      }
+
+      function renderRouteStrip() {
+        const strip = document.getElementById('route-strip');
+        const stripItems = [
+          { id: 'madrid-start', label: 'MAD (2n)', arrow: '✈' },
+          { id: 'milan', label: 'MIL (2n)', arrow: '→' },
+          { id: 'roma', label: 'ROM (3n)', arrow: '→' },
+          { id: 'napoles', label: 'NAP (2n)', arrow: '→' },
+          { id: 'pompeya', label: 'POM', arrow: '→' },
+          { id: 'sorrento', label: 'SOR (2n)', arrow: '→' },
+          { id: 'roma', label: 'ROM FCO', arrow: '✈' },
+          { id: 'oporto', label: 'OPO (3n)', arrow: '→' },
+          { id: 'vigo', label: 'VGO', arrow: '→' },
+          { id: 'madrid-end', label: 'MAD (1n)', arrow: '' }
+        ];
+        strip.innerHTML = stripItems.map(item => {
+          const active = state.selectedStopId === item.id;
+          const arrowHtml = item.arrow ? `<span class="text-slate-400 mx-0.5">${item.arrow}</span>` : '';
+          return `<button type="button" data-stop-id="${item.id}" class="strip-stop px-2 py-1 rounded font-medium transition ${active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">${item.label}</button>${arrowHtml}`;
+        }).join('');
+      }
+
+      function selectLeg(legId, shouldZoom = true) {
+        state.selectedLegId = legId;
+        state.selectedStopId = null;
+        state.selectedDayId = null;
+        const leg = LEGS.find(l => l.id === legId);
+        if (shouldZoom && leg) {
+          zoomToBounds([stopById[leg.from].coords, stopById[leg.to].coords], 0.52);
+        }
+        renderRoute();
+        renderDetailPanel();
+        renderLegsList();
+        renderRouteStrip();
+      }
+
+      function selectStop(stopId) {
+        state.selectedStopId = stopId;
+        state.selectedLegId = null;
+        state.selectedDayId = null;
+        const stop = stopById[stopId];
+        if (stop) {
+          zoomToBounds([stop.coords], 0.4);
+        }
+        renderRoute();
+        renderDetailPanel();
+        renderLegsList();
+        renderRouteStrip();
+      }
+
+      function togglePlay() {
+        const btn = document.getElementById('btn-play');
+        if (state.playing) {
+          clearInterval(state.playTimer);
+          state.playing = false;
+          btn.textContent = '▶ Recorrer';
+          return;
+        }
+        state.playing = true;
+        btn.textContent = '⏸ Pausar';
+        let idx = LEGS.findIndex(l => l.id === state.selectedLegId);
+        if (idx < 0) idx = 0;
+        selectLeg(LEGS[idx].id, true);
+        state.playTimer = setInterval(() => {
+          idx = (idx + 1) % LEGS.length;
+          selectLeg(LEGS[idx].id, true);
+        }, 2600);
+      }
+
+      // Event Listeners
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.filter = btn.dataset.filter;
+          document.querySelectorAll('.filter-btn').forEach(b => {
+            const active = b.dataset.filter === state.filter;
+            b.className = `filter-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${active ? 'bg-slate-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'}`;
+          });
+          const visible = LEGS.filter(l => modeMatchesFilter(l.mode));
+          if (visible.length && !visible.some(l => l.id === state.selectedLegId)) {
+            state.selectedLegId = visible[0].id;
+            state.selectedStopId = null;
+          }
+          renderRoute();
+          renderLegsList();
+          renderDetailPanel();
+        });
+      });
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = btn.dataset.preset;
+          if (p === 'full') zoomToBounds(STOPS.map(s => s.coords), 0.72);
+          if (p === 'italy') zoomToBounds([stopById['milan'].coords, stopById['roma'].coords, stopById['sorrento'].coords], 0.65);
+          if (p === 'campania') zoomToBounds([stopById['napoles'].coords, stopById['pompeya'].coords, stopById['sorrento'].coords], 0.55);
+          if (p === 'iberia') zoomToBounds([stopById['oporto'].coords, stopById['vigo'].coords, stopById['madrid-start'].coords], 0.65);
+        });
+      });
+
+      document.getElementById('tab-legs').addEventListener('click', () => {
+        state.sideTab = 'legs';
+        document.getElementById('legs-list').classList.remove('hidden');
+        document.getElementById('days-list').classList.add('hidden');
+        document.getElementById('tab-legs').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-bold bg-slate-900 text-white transition';
+        document.getElementById('tab-days').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 hover:bg-slate-200/70 transition';
+      });
+
+      document.getElementById('tab-days').addEventListener('click', () => {
+        state.sideTab = 'days';
+        document.getElementById('days-list').classList.remove('hidden');
+        document.getElementById('legs-list').classList.add('hidden');
+        document.getElementById('tab-days').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-bold bg-slate-900 text-white transition';
+        document.getElementById('tab-legs').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 hover:bg-slate-200/70 transition';
+        renderDaysList();
+      });
+
+      document.getElementById('legs-list').addEventListener('click', (e) => {
+        const btn = e.target.closest('.leg-item');
+        if (btn) selectLeg(btn.dataset.legId, true);
+      });
+
+      document.getElementById('days-list').addEventListener('click', (e) => {
+        const btn = e.target.closest('.day-item');
+        if (btn) selectDay(btn.dataset.dayId);
+      });
+
+      document.getElementById('route-strip').addEventListener('click', (e) => {
+        const btn = e.target.closest('.strip-stop');
+        if (btn) selectStop(btn.dataset.stopId);
+      });
+
+      document.getElementById('zoom-in').addEventListener('click', () => svg.transition().duration(300).call(zoom.scaleBy, 1.45));
+      document.getElementById('zoom-out').addEventListener('click', () => svg.transition().duration(300).call(zoom.scaleBy, 0.7));
+      document.getElementById('zoom-reset').addEventListener('click', () => zoomToBounds(STOPS.map(s => s.coords), 0.72));
+
+      document.getElementById('btn-prev').addEventListener('click', () => {
+        const cur = LEGS.findIndex(l => l.id === state.selectedLegId);
+        const prev = cur <= 0 ? LEGS.length - 1 : cur - 1;
+        selectLeg(LEGS[prev].id, true);
+      });
+      document.getElementById('btn-next').addEventListener('click', () => {
+        const cur = LEGS.findIndex(l => l.id === state.selectedLegId);
+        const next = (cur + 1) % LEGS.length;
+        selectLeg(LEGS[next].id, true);
+      });
+      document.getElementById('btn-play').addEventListener('click', togglePlay);
+
+      // Load World Atlas TopoJSON
+      const ROUTE_ISO = new Set(['724', '620', '380', '250', '756']); // Spain, Portugal, Italy, France, Switzerland
+      fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json')
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(world => {
+          statusEl.style.display = 'none';
+          const countries = topojson.feature(world, world.objects.countries).features;
+          gCountries.selectAll('path')
+            .data(countries)
+            .enter()
+            .append('path')
+            .attr('d', pathGen)
+            .attr('class', d => ROUTE_ISO.has(String(d.id)) ? 'country-route' : 'country-land');
+
+          renderRoute();
+          renderDetailPanel();
+          renderLegsList();
+          renderDaysList();
+          renderRouteStrip();
+          zoomToBounds(STOPS.map(s => s.coords), 0.74);
+        })
+        .catch(() => {
+          statusEl.textContent = 'No se pudo cargar el atlas vectorial. Verifica tu conexión a internet e inténtalo de nuevo.';
+        });
+    })();
+  </script>
+</body>
+</html>
