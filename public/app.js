@@ -546,17 +546,17 @@
       const day = DAYS.find(d => d.id === state.selectedDayId);
       el.innerHTML = `
         <div class="flex items-center justify-between gap-2 flex-wrap">
-          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-900 dark:bg-blue-600 text-white">Día ${day.num} · ${day.date}</span>
-          <span class="text-xs font-semibold text-blue-700 dark:text-blue-400">${day.city}</span>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-zinc-900">Día ${day.num} · ${day.date}</span>
+          <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">${day.city}</span>
         </div>
-        <div class="mt-3 space-y-2 text-xs text-slate-700 dark:text-slate-300">
-          <div class="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5">
-            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Bloque AM</div>
-            <p class="mt-0.5 text-slate-800 dark:text-slate-100">${day.am}</p>
+        <div class="mt-3 space-y-2 text-xs text-slate-700 dark:text-zinc-300">
+          <div class="apple-glass-subtle rounded-2xl p-3">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-400">Bloque AM</div>
+            <p class="mt-0.5 text-slate-800 dark:text-zinc-100">${day.am}</p>
           </div>
-          <div class="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5">
-            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Bloque PM y Mantenimiento</div>
-            <p class="mt-0.5 text-slate-800 dark:text-slate-100">${day.pm}</p>
+          <div class="apple-glass-subtle rounded-2xl p-3">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-400">Bloque PM y Mantenimiento</div>
+            <p class="mt-0.5 text-slate-800 dark:text-zinc-100">${day.pm}</p>
           </div>
           <p><strong>Traslado:</strong> ${day.transit}</p>
           <p><strong>Notas:</strong> ${day.notes}</p>
@@ -567,48 +567,48 @@
       const fromStop = stopById[leg.from];
       const toStop = stopById[leg.to];
       const badgeCls = leg.mode === 'flight'
-        ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25'
         : (leg.mode === 'highspeed'
-          ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-          : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800');
+          ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25'
+          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/25');
 
       el.innerHTML = `
         <div class="flex items-center justify-between gap-2 flex-wrap">
-          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${badgeCls}">${leg.modeLabel}</span>
-          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">${leg.date}</span>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeCls}">${leg.modeLabel}</span>
+          <span class="text-xs font-medium text-slate-500 dark:text-zinc-400">${leg.date}</span>
         </div>
-        <h3 class="text-base font-bold text-slate-900 dark:text-white mt-2">${fromStop.name} → ${toStop.name}</h3>
+        <h3 class="text-base font-semibold tracking-tight text-slate-900 dark:text-white mt-2">${fromStop.name} → ${toStop.name}</h3>
         <div class="grid grid-cols-3 gap-2 mt-3">
-          <div class="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
-            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">En ruta</div>
-            <div class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">${leg.transitTime}</div>
+          <div class="apple-glass-subtle rounded-2xl p-2.5">
+            <div class="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">En ruta</div>
+            <div class="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white mt-0.5">${leg.transitTime}</div>
           </div>
-          <div class="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
-            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Puerta a puerta</div>
-            <div class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">${leg.doorToDoor}</div>
+          <div class="apple-glass-subtle rounded-2xl p-2.5">
+            <div class="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">Puerta a puerta</div>
+            <div class="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white mt-0.5">${leg.doorToDoor}</div>
           </div>
-          <div class="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900 rounded-lg p-2">
+          <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-2.5">
             <div class="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">Costo est.</div>
-            <div class="text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-100">${leg.cost}</div>
+            <div class="text-xs sm:text-sm font-semibold text-emerald-900 dark:text-emerald-100 mt-0.5">${leg.cost}</div>
           </div>
         </div>
-        <p class="text-xs text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">${leg.notes}</p>
-        <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">En destino (${toStop.name})</div>
-          <p class="text-xs text-slate-700 dark:text-slate-300 mt-1"><strong>Foco:</strong> ${toStop.focus}</p>
-          <p class="text-xs text-slate-700 dark:text-slate-300 mt-1"><strong>Café:</strong> ${toStop.coffee}</p>
-          <p class="text-xs text-slate-700 dark:text-slate-300 mt-1"><strong>Físico:</strong> ${toStop.fitness}</p>
+        <p class="text-xs text-slate-600 dark:text-zinc-300 mt-3 leading-relaxed">${leg.notes}</p>
+        <div class="mt-3 pt-3 border-t border-slate-200/60 dark:border-white/10">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-400">En destino (${toStop.name})</div>
+          <p class="text-xs text-slate-700 dark:text-zinc-300 mt-1"><strong>Foco:</strong> ${toStop.focus}</p>
+          <p class="text-xs text-slate-700 dark:text-zinc-300 mt-1"><strong>Café:</strong> ${toStop.coffee}</p>
+          <p class="text-xs text-slate-700 dark:text-zinc-300 mt-1"><strong>Físico:</strong> ${toStop.fitness}</p>
         </div>
       `;
     } else if (state.selectedStopId) {
       const stop = stopById[state.selectedStopId];
       el.innerHTML = `
         <div class="flex items-center justify-between gap-2">
-          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-900 dark:bg-blue-600 text-white">Parada #${stop.order} · ${stop.country}</span>
-          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">${stop.dates} (${stop.nights} noches)</span>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-zinc-900">Parada #${stop.order} · ${stop.country}</span>
+          <span class="text-xs font-medium text-slate-500 dark:text-zinc-400">${stop.dates} (${stop.nights} noches)</span>
         </div>
-        <h3 class="text-base font-bold text-slate-900 dark:text-white mt-2">${stop.name}</h3>
-        <div class="mt-3 space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+        <h3 class="text-base font-semibold tracking-tight text-slate-900 dark:text-white mt-2">${stop.name}</h3>
+        <div class="mt-3 space-y-1.5 text-xs text-slate-700 dark:text-zinc-300">
           <p><strong>Historia y Arquitectura:</strong> ${stop.focus}</p>
           <p><strong>Café de especialidad:</strong> ${stop.coffee}</p>
           <p><strong>Gimnasio / Sauna:</strong> ${stop.fitness}</p>
@@ -634,22 +634,22 @@
       const dotColor = leg.mode === 'flight' ? 'bg-amber-500' : (leg.mode === 'highspeed' ? 'bg-blue-600' : 'bg-emerald-600');
       const openCount = getOpenCommentCount('leg', leg.id);
       const countBadge = openCount > 0
-        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-500 text-white' : 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300'}">💬 ${openCount}</span>`
+        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-blue-500/15 text-blue-700 dark:text-blue-300'}">💬 ${openCount}</span>`
         : '';
       return `
-        <button type="button" data-leg-id="${leg.id}" class="leg-item w-full text-left px-3 py-2.5 rounded-lg transition flex items-start justify-between gap-2 ${isActive ? 'bg-slate-900 dark:bg-blue-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-800 dark:text-slate-200'}">
+        <button type="button" data-leg-id="${leg.id}" class="leg-item w-full text-left px-3 py-2.5 rounded-2xl transition flex items-start justify-between gap-2 ${isActive ? 'bg-slate-900/90 dark:bg-blue-600 text-white shadow-sm' : 'hover:bg-white/60 dark:hover:bg-white/5 text-slate-800 dark:text-zinc-200'}">
           <div class="min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="w-2 h-2 rounded-full shrink-0 ${dotColor}"></span>
-              <span class="text-xs font-bold truncate">${leg.index}. ${fromStop.short} → ${toStop.short}</span>
-              <span class="text-[11px] ${isActive ? 'text-slate-200' : 'text-slate-400'}">${leg.date}</span>
+              <span class="text-xs font-semibold truncate">${leg.index}. ${fromStop.short} → ${toStop.short}</span>
+              <span class="text-[11px] ${isActive ? 'text-slate-200' : 'text-slate-400 dark:text-zinc-400'}">${leg.date}</span>
               ${countBadge}
             </div>
-            <div class="text-[11px] mt-0.5 truncate ${isActive ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'}">${leg.modeLabel}</div>
+            <div class="text-[11px] mt-0.5 truncate ${isActive ? 'text-slate-200' : 'text-slate-500 dark:text-zinc-400'}">${leg.modeLabel}</div>
           </div>
           <div class="text-right shrink-0">
-            <div class="text-xs font-bold">${leg.transitTime}</div>
-            <div class="text-[10px] font-semibold ${isActive ? 'text-emerald-200' : 'text-emerald-700 dark:text-emerald-400'}">${leg.cost}</div>
+            <div class="text-xs font-semibold">${leg.transitTime}</div>
+            <div class="text-[10px] font-semibold ${isActive ? 'text-emerald-200' : 'text-emerald-600 dark:text-emerald-400'}">${leg.cost}</div>
           </div>
         </button>
       `;
@@ -662,19 +662,19 @@
       const isActive = state.selectedDayId === day.id;
       const openCount = getOpenCommentCount('day', day.id);
       const countBadge = openCount > 0
-        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-500 text-white' : 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300'}">💬 ${openCount}</span>`
+        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-blue-500/15 text-blue-700 dark:text-blue-300'}">💬 ${openCount}</span>`
         : '';
       return `
-        <button type="button" data-day-id="${day.id}" class="day-item w-full text-left px-3 py-2.5 rounded-lg transition ${isActive ? 'bg-slate-900 dark:bg-blue-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-800 dark:text-slate-200'}">
+        <button type="button" data-day-id="${day.id}" class="day-item w-full text-left px-3 py-2.5 rounded-2xl transition ${isActive ? 'bg-slate-900/90 dark:bg-blue-600 text-white shadow-sm' : 'hover:bg-white/60 dark:hover:bg-white/5 text-slate-800 dark:text-zinc-200'}">
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-1.5">
-              <span class="text-xs font-bold">Día ${day.num} · ${day.date}</span>
+              <span class="text-xs font-semibold">Día ${day.num} · ${day.date}</span>
               ${countBadge}
             </div>
-            <span class="text-[11px] font-semibold ${isActive ? 'text-blue-200' : 'text-blue-700 dark:text-blue-400'}">${day.city}</span>
+            <span class="text-[11px] font-semibold ${isActive ? 'text-blue-200' : 'text-blue-600 dark:text-blue-400'}">${day.city}</span>
           </div>
-          <div class="text-[11px] mt-1 line-clamp-1 ${isActive ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'}">${day.am}</div>
-          <div class="text-[10px] mt-0.5 ${isActive ? 'text-slate-300' : 'text-slate-400'}">${day.transit}</div>
+          <div class="text-[11px] mt-1 line-clamp-1 ${isActive ? 'text-slate-200' : 'text-slate-500 dark:text-zinc-400'}">${day.am}</div>
+          <div class="text-[10px] mt-0.5 ${isActive ? 'text-slate-300' : 'text-slate-400 dark:text-zinc-500'}">${day.transit}</div>
         </button>
       `;
     }).join('');
@@ -696,8 +696,8 @@
     ];
     strip.innerHTML = stripItems.map(item => {
       const active = state.selectedStopId === item.id;
-      const arrowHtml = item.arrow ? `<span class="text-slate-400 mx-0.5">${item.arrow}</span>` : '';
-      return `<button type="button" data-stop-id="${item.id}" class="strip-stop px-2 py-1 rounded font-medium transition ${active ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}">${item.label}</button>${arrowHtml}`;
+      const arrowHtml = item.arrow ? `<span class="text-slate-400 dark:text-zinc-500 mx-0.5">${item.arrow}</span>` : '';
+      return `<button type="button" data-stop-id="${item.id}" class="strip-stop px-2.5 py-1 rounded-full font-medium transition ${active ? 'bg-blue-600 text-white shadow-sm' : 'apple-glass-subtle text-slate-700 dark:text-zinc-200 hover:bg-white/80 dark:hover:bg-zinc-800'}">${item.label}</button>${arrowHtml}`;
     }).join('');
   }
 
@@ -918,10 +918,10 @@
       const isResolved = comment.status === 'resolved';
 
       const card = document.createElement('article');
-      card.className = `border rounded-xl p-3.5 transition ${
+      card.className = `rounded-2xl p-4 transition ${
         isResolved
-          ? 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-85'
-          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-sm'
+          ? 'apple-glass-subtle opacity-75'
+          : 'apple-glass-subtle shadow-sm'
       }`;
 
       // Header row
@@ -1151,10 +1151,10 @@
       state.filter = btn.dataset.filter;
       document.querySelectorAll('.filter-btn').forEach(b => {
         const active = b.dataset.filter === state.filter;
-        b.className = `filter-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+        b.className = `filter-btn px-3 py-1 rounded-full text-xs transition ${
           active
-            ? 'bg-slate-900 dark:bg-blue-600 text-white'
-            : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+            ? 'font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm'
+            : 'font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white'
         }`;
       });
       const visible = LEGS.filter(l => modeMatchesFilter(l.mode));
@@ -1184,16 +1184,16 @@
     state.sideTab = 'legs';
     document.getElementById('legs-list').classList.remove('hidden');
     document.getElementById('days-list').classList.add('hidden');
-    document.getElementById('tab-legs').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-bold bg-slate-900 dark:bg-blue-600 text-white transition';
-    document.getElementById('tab-days').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition';
+    document.getElementById('tab-legs').className = 'side-tab px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm transition';
+    document.getElementById('tab-days').className = 'side-tab px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition';
   });
 
   document.getElementById('tab-days').addEventListener('click', () => {
     state.sideTab = 'days';
     document.getElementById('days-list').classList.remove('hidden');
     document.getElementById('legs-list').classList.add('hidden');
-    document.getElementById('tab-days').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-bold bg-slate-900 dark:bg-blue-600 text-white transition';
-    document.getElementById('tab-legs').className = 'side-tab px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition';
+    document.getElementById('tab-days').className = 'side-tab px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm transition';
+    document.getElementById('tab-legs').className = 'side-tab px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition';
     renderDaysList();
   });
 
@@ -1245,10 +1245,10 @@
       state.commentFilter = btn.dataset.commentFilter;
       document.querySelectorAll('.comment-filter-btn').forEach(b => {
         const active = b.dataset.commentFilter === state.commentFilter;
-        b.className = `comment-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+        b.className = `comment-filter-btn px-3 py-1 rounded-full text-xs transition ${
           active
-            ? 'bg-slate-900 dark:bg-blue-600 text-white'
-            : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+            ? 'font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm'
+            : 'font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white'
         }`;
       });
       renderCommentsList();
