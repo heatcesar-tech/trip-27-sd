@@ -709,11 +709,15 @@
       yMax = lat2tile(llBR[1], z);
     }
 
+    gTiles.style('filter', state.darkMode
+      ? 'invert(92%) hue-rotate(180deg) brightness(0.95) contrast(0.92)'
+      : 'none');
+
     const maxIdx = Math.pow(2, z) - 1;
     const tiles = [];
     for (let x = Math.max(0, xMin); x <= Math.min(maxIdx, xMax); x++) {
       for (let y = Math.max(0, yMin); y <= Math.min(maxIdx, yMax); y++) {
-        tiles.push({ x, y, z, key: `${state.darkMode ? 'd' : 'l'}-${z}-${x}-${y}` });
+        tiles.push({ x, y, z, key: `${z}-${x}-${y}` });
       }
     }
 
@@ -722,9 +726,7 @@
       enter => enter.append('image')
         .attr('class', 'map-tile')
         .attr('preserveAspectRatio', 'none')
-        .attr('href', d => state.darkMode
-          ? `https://basemaps.cartocdn.com/dark_all/${d.z}/${d.x}/${d.y}@2x.png`
-          : `https://basemaps.cartocdn.com/rastertiles/voyager/${d.z}/${d.x}/${d.y}@2x.png`),
+        .attr('href', d => `https://tile.openstreetmap.org/${d.z}/${d.x}/${d.y}.png`),
       update => update,
       exit => exit.remove()
     )
