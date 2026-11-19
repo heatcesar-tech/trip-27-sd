@@ -613,12 +613,31 @@
     localStorage.setItem(DARK_MODE_STORAGE_KEY, String(state.darkMode));
     syncThemeButton();
     renderRoute();
+    renderTiles(d3.zoomTransform(svg.node()));
   }
 
   syncThemeButton();
   document.getElementById('theme-toggle').addEventListener('click', toggleDarkMode);
 
   // ---------------- Map Setup ----------------
+  const POIS = [
+    { id: 'poi-chamartin', name: 'Madrid Chamartín', coords: [-3.6825, 40.4721] },
+    { id: 'poi-granvia', name: 'Gran Vía · Casa del Libro / Primark', coords: [-3.7042, 40.4201] },
+    { id: 'poi-milcentrale', name: 'Milano Centrale', coords: [9.2041, 45.4859] },
+    { id: 'poi-navigli', name: 'Navigli', coords: [9.1764, 45.4519] },
+    { id: 'poi-termini', name: 'Roma Termini', coords: [12.5018, 41.9009] },
+    { id: 'poi-coliseo', name: 'Coliseo & Foro Romano', coords: [12.4922, 41.8902] },
+    { id: 'poi-eur', name: 'Distrito EUR', coords: [12.4653, 41.8339] },
+    { id: 'poi-napcentrale', name: 'Napoli Centrale', coords: [14.2725, 40.8529] },
+    { id: 'poi-mann', name: 'Museo MANN', coords: [14.2504, 40.8534] },
+    { id: 'poi-pompeya', name: 'Porta Marina · Pompeya', coords: [14.4829, 40.7489] },
+    { id: 'poi-sorrento', name: 'Marina Piccola · Sorrento', coords: [14.3755, 40.6295] },
+    { id: 'poi-campanha', name: 'Porto Campanhã', coords: [-8.5856, 41.1489] },
+    { id: 'poi-serralves', name: 'Fundación Serralves', coords: [-8.6596, 41.1597] },
+    { id: 'poi-casamusica', name: 'Casa da Música', coords: [-8.6307, 41.1589] },
+    { id: 'poi-vigo', name: 'Vigo Guixar / Urzáiz', coords: [-8.7128, 42.2384] }
+  ];
+
   const svg = d3.select('#route-map');
   const mapContainer = document.getElementById('route-map').parentElement;
   const statusEl = document.getElementById('map-status');
@@ -629,8 +648,10 @@
 
   const gRoot = svg.append('g');
   const gCountries = gRoot.append('g');
+  const gTiles = gRoot.append('g').style('pointer-events', 'none');
   const gLegs = gRoot.append('g');
   const gLabels = gRoot.append('g');
+  const gPois = gRoot.append('g');
   const gStops = gRoot.append('g');
 
   const projection = d3.geoMercator()
@@ -639,6 +660,87 @@
     .translate([width / 2, height / 2]);
 
   const pathGen = d3.geoPath().projection(projection);
+
+  function lon2tile(lon, z) {
+    return Math.floor(((lon + 180) / 360) * Math.pow(2, z));
+  }
+  function lat2tile(lat, z) {
+    const clamped = Math.max(-85, Math.min(85, lat));
+    const rad = (clamped * Math.PI) / 180;
+    return Math.floor(((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, z));
+  }
+  function tile2lon(x, z) {
+    return (x / Math.pow(2, z)) * 360 - 180;
+  }
+  function tile2lat(y, z) {
+    const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+    return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  }
+
+  function renderTiles(transform) {
+    const k = (transform && transform.k) || 1;
+    if (k < 2.2) {
+      gTiles.style('opacity', 0).selectAll('image').remove();
+      return;
+    }
+
+    const opacity = Math.min(0.95, (k - 2.2) / 1.4);
+    gTiles.style('opacity', opacity);
+
+    const worldPx = 2 * Math.PI * projection.scale() * k;
+    let z = Math.max(5, Math.min(18, Math.round(Math.log2(worldPx / 256))));
+
+    const pTL = transform.invert([0, 0]);
+    const pBR = transform.invert([width, height]);
+    const llTL = projection.invert(pTL);
+    const llBR = projection.invert(pBR);
+    if (!llTL || !llBR) return;
+
+    let xMin = lon2tile(llTL[0], z);
+    let xMax = lon2tile(llBR[0], z);
+    let yMin = lat2tile(llTL[1], z);
+    let yMax = lat2tile(llBR[1], z);
+
+    while ((xMax - xMin + 1) * (yMax - yMin + 1) > 48 && z > 5) {
+      z -= 1;
+      xMin = lon2tile(llTL[0], z);
+      xMax = lon2tile(llBR[0], z);
+      yMin = lat2tile(llTL[1], z);
+      yMax = lat2tile(llBR[1], z);
+    }
+
+    const maxIdx = Math.pow(2, z) - 1;
+    const tiles = [];
+    for (let x = Math.max(0, xMin); x <= Math.min(maxIdx, xMax); x++) {
+      for (let y = Math.max(0, yMin); y <= Math.min(maxIdx, yMax); y++) {
+        tiles.push({ x, y, z, key: `${state.darkMode ? 'd' : 'l'}-${z}-${x}-${y}` });
+      }
+    }
+
+    const tileSel = gTiles.selectAll('image.map-tile').data(tiles, d => d.key);
+    tileSel.join(
+      enter => enter.append('image')
+        .attr('class', 'map-tile')
+        .attr('preserveAspectRatio', 'none')
+        .attr('href', d => state.darkMode
+          ? `https://basemaps.cartocdn.com/dark_all/${d.z}/${d.x}/${d.y}@2x.png`
+          : `https://basemaps.cartocdn.com/rastertiles/voyager/${d.z}/${d.x}/${d.y}@2x.png`),
+      update => update,
+      exit => exit.remove()
+    )
+      .attr('x', d => projection([tile2lon(d.x, d.z), tile2lat(d.y, d.z)])[0])
+      .attr('y', d => projection([tile2lon(d.x, d.z), tile2lat(d.y, d.z)])[1])
+      .attr('width', d => {
+        const p0 = projection([tile2lon(d.x, d.z), tile2lat(d.y, d.z)]);
+        const p1 = projection([tile2lon(d.x + 1, d.z), tile2lat(d.y + 1, d.z)]);
+        return Math.max(0.1, p1[0] - p0[0]);
+      })
+      .attr('height', d => {
+        const p0 = projection([tile2lon(d.x, d.z), tile2lat(d.y, d.z)]);
+        const p1 = projection([tile2lon(d.x + 1, d.z), tile2lat(d.y + 1, d.z)]);
+        return Math.max(0.1, p1[1] - p0[1]);
+      });
+  }
 
   function resizeMap() {
     const nextW = mapContainer.clientWidth;
@@ -652,6 +754,7 @@
       .translate([width / 2, height / 2]);
     gCountries.selectAll('path').attr('d', pathGen);
     renderRoute();
+    renderTiles(d3.zoomTransform(svg.node()));
   }
 
   if (typeof ResizeObserver !== 'undefined') {
@@ -719,6 +822,13 @@
         return 0.96;
       });
 
+    gPois.style('opacity', safeK >= 4 ? 1 : 0);
+    gPois.selectAll('g.poi-node')
+      .attr('transform', d => {
+        const p = projection(d.coords);
+        return `translate(${p[0]}, ${p[1]}) scale(${1 / safeK})`;
+      });
+
     gLegs.selectAll('path.leg-path')
       .style('stroke-width', d => (state.selectedLegId === d.id || state.hoveredLegId === d.id ? 3.6 : 2.2) / safeK)
       .attr('stroke-dasharray', d => {
@@ -729,10 +839,11 @@
   }
 
   const zoom = d3.zoom()
-    .scaleExtent([0.8, 18])
+    .scaleExtent([0.8, 120])
     .on('zoom', (event) => {
       gRoot.attr('transform', event.transform);
       updateZoomVisibility(event.transform.k);
+      renderTiles(event.transform);
     });
 
   svg.call(zoom);
@@ -897,6 +1008,30 @@
       .style('stroke', isDark ? '#0b1120' : '#ffffff');
 
     stopSel.exit().remove();
+
+    // Render city-level POIs (visible on zoom-in k >= 4)
+    const poiSel = gPois.selectAll('g.poi-node').data(POIS, d => d.id);
+    const poiEnter = poiSel.enter().append('g')
+      .attr('class', 'poi-node')
+      .style('pointer-events', 'none');
+    poiEnter.append('circle').attr('r', 3.5).attr('stroke', '#ffffff').attr('stroke-width', 1.2);
+    poiEnter.append('text')
+      .attr('dx', 6)
+      .attr('dy', 3)
+      .style('font-size', '9.5px')
+      .style('font-weight', '600');
+
+    poiSel.merge(poiEnter).select('circle')
+      .attr('fill', '#AF52DE')
+      .attr('stroke', isDark ? '#0f172a' : '#ffffff');
+    poiSel.merge(poiEnter).select('text')
+      .text(d => d.name)
+      .style('fill', isDark ? '#e2e8f0' : '#1e293b')
+      .style('paint-order', 'stroke')
+      .style('stroke', isDark ? '#0b1120' : '#ffffff')
+      .style('stroke-width', '2.5px');
+    poiSel.exit().remove();
+
     updateZoomVisibility(k);
   }
 
