@@ -1,277 +1,375 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Circuito Europa 2027 · Mapa Interactivo</title>
+  <title>Circuito Europa 2027 — Mapa, Cronograma y Revisión</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script>
-    tailwind.config = { darkMode: 'class' };
     (function () {
       try {
-        var saved = localStorage.getItem('viaje_2027_dark_mode');
-        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const saved = localStorage.getItem('viaje_2027_dark_mode');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (saved === 'true' || (saved === null && prefersDark)) {
           document.documentElement.classList.add('dark');
         }
-      } catch (e) {}
+      } catch {}
     })();
+  </script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            apple: {
+              blue: '#007AFF',
+              blueDark: '#0A84FF',
+              green: '#34C759',
+              orange: '#FF9500',
+              indigo: '#5856D6',
+              purple: '#AF52DE',
+              red: '#FF3B30'
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
   <style>
+    :root {
+      --apple-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
-      background-color: #f5f5f7;
-      background-image:
-        radial-gradient(at 12% 8%, rgba(59, 130, 246, 0.11) 0px, transparent 48%),
-        radial-gradient(at 88% 12%, rgba(16, 185, 129, 0.09) 0px, transparent 44%),
-        radial-gradient(at 50% 92%, rgba(99, 102, 241, 0.08) 0px, transparent 52%);
-      background-attachment: fixed;
-    }
-    html.dark body {
-      background-color: #09090b;
-      background-image:
-        radial-gradient(at 14% 8%, rgba(37, 99, 235, 0.18) 0px, transparent 48%),
-        radial-gradient(at 86% 14%, rgba(16, 185, 129, 0.11) 0px, transparent 44%),
-        radial-gradient(at 50% 92%, rgba(79, 70, 229, 0.14) 0px, transparent 52%);
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     }
 
-    .apple-glass {
+    /* Apple System Canvas + Ambient Glow */
+    .ambient-bg {
+      background-color: #F5F5F7;
+      background-image:
+        radial-gradient(at 8% 6%, rgba(0, 122, 255, 0.11) 0px, transparent 42%),
+        radial-gradient(at 92% 12%, rgba(52, 199, 89, 0.08) 0px, transparent 38%),
+        radial-gradient(at 50% 92%, rgba(88, 86, 214, 0.08) 0px, transparent 48%);
+    }
+    html.dark .ambient-bg {
+      background-color: #000000;
+      background-image:
+        radial-gradient(at 10% 8%, rgba(10, 132, 255, 0.18) 0px, transparent 45%),
+        radial-gradient(at 90% 14%, rgba(48, 209, 88, 0.10) 0px, transparent 40%),
+        radial-gradient(at 50% 90%, rgba(94, 92, 230, 0.14) 0px, transparent 50%);
+    }
+
+    /* Apple Liquid Glass Material */
+    .glass-panel {
       background: rgba(255, 255, 255, 0.72);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.75);
-      box-shadow: 0 10px 35px -10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      box-shadow:
+        0 12px 36px -12px rgba(0, 0, 0, 0.08),
+        0 1px 2px rgba(0, 0, 0, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.88);
     }
-    html.dark .apple-glass {
-      background: rgba(24, 24, 27, 0.66);
-      border: 1px solid rgba(255, 255, 255, 0.10);
-      box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    html.dark .glass-panel {
+      background: rgba(28, 28, 30, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow:
+        0 18px 44px -12px rgba(0, 0, 0, 0.68),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    .apple-glass-subtle {
-      background: rgba(255, 255, 255, 0.54);
-      backdrop-filter: blur(16px) saturate(160%);
-      -webkit-backdrop-filter: blur(16px) saturate(160%);
-      border: 1px solid rgba(15, 23, 42, 0.06);
+    .glass-subtle {
+      background: rgba(255, 255, 255, 0.52);
+      backdrop-filter: blur(16px) saturate(170%);
+      -webkit-backdrop-filter: blur(16px) saturate(170%);
+      border: 1px solid rgba(0, 0, 0, 0.06);
     }
-    html.dark .apple-glass-subtle {
-      background: rgba(39, 39, 42, 0.50);
+    html.dark .glass-subtle {
+      background: rgba(44, 44, 46, 0.56);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
+    .segmented-track {
+      background: rgba(118, 118, 128, 0.12);
+      padding: 3px;
+      border-radius: 9999px;
+    }
+    html.dark .segmented-track {
+      background: rgba(118, 118, 128, 0.24);
+    }
+
+    .apple-btn {
+      transition: transform 220ms var(--apple-ease), background-color 200ms ease, color 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+    }
+    .apple-btn:active {
+      transform: scale(0.96);
+    }
+
+    @keyframes appleFadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-apple-in {
+      animation: appleFadeUp 280ms var(--apple-ease) both;
+    }
+
+    /* Vector Map styles */
     .country-land {
-      fill: rgba(226, 232, 240, 0.78);
-      stroke: rgba(203, 213, 225, 0.9);
-      stroke-width: 0.75px;
-      transition: fill 0.25s ease, stroke 0.25s ease;
+      fill: #E5E5EA;
+      stroke: #D1D1D6;
+      transition: fill 0.25s ease;
     }
     .country-route {
-      fill: rgba(255, 255, 255, 0.92);
-      stroke: rgba(148, 163, 184, 0.85);
-      stroke-width: 1px;
-      transition: fill 0.25s ease, stroke 0.25s ease;
+      fill: #FFFFFF;
+      stroke: #AEAEB2;
+      transition: fill 0.25s ease;
     }
     html.dark .country-land {
-      fill: rgba(30, 41, 59, 0.72);
-      stroke: rgba(51, 65, 85, 0.85);
+      fill: #1C1C1E;
+      stroke: #2C2C2E;
     }
     html.dark .country-route {
-      fill: rgba(51, 65, 85, 0.88);
-      stroke: rgba(100, 116, 139, 0.9);
+      fill: #2C2C2E;
+      stroke: #48484A;
     }
 
     .leg-path {
       fill: none;
       stroke-linecap: round;
-      transition: opacity 0.25s ease, stroke-width 0.25s ease;
+      transition: opacity 0.2s ease;
       cursor: pointer;
     }
     .leg-path.dimmed {
       opacity: 0.14;
     }
     .leg-path.active-leg {
-      filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.45));
+      filter: drop-shadow(0 0 6px rgba(0, 122, 255, 0.45));
     }
     .stop-node {
       cursor: pointer;
-      transition: transform 0.2s ease;
     }
     .time-pill {
       pointer-events: none;
     }
+
     .custom-scroll::-webkit-scrollbar {
       width: 5px;
       height: 5px;
     }
     .custom-scroll::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.45);
+      background: rgba(142, 142, 147, 0.4);
       border-radius: 9999px;
-    }
-    html.dark .custom-scroll::-webkit-scrollbar-thumb {
-      background: rgba(113, 113, 122, 0.55);
     }
   </style>
 </head>
-<body class="text-slate-900 dark:text-zinc-100 min-h-screen flex flex-col transition-colors duration-300">
+<body class="ambient-bg text-[#1D1D1F] dark:text-[#F5F5F7] min-h-screen flex flex-col transition-colors duration-300">
 
-  <!-- Floating Minimalist Glass Navbar -->
-  <div class="sticky top-3 z-30 max-w-7xl w-full mx-auto px-4 sm:px-6">
-    <header class="apple-glass rounded-full px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3 transition-colors">
-      <div class="flex items-center gap-3 min-w-0">
-        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-900 dark:bg-white text-white dark:text-zinc-900 shrink-0">
-          30 abr – 15 may
-        </span>
-        <h1 class="text-sm sm:text-base font-semibold tracking-tight text-slate-900 dark:text-white truncate">
-          Circuito Europa 2027
-        </h1>
-        <span class="hidden md:inline-block text-xs text-slate-400 dark:text-zinc-500 truncate">
-          · Italia, Oporto y Madrid
-        </span>
-      </div>
-
-      <div class="flex items-center gap-2 shrink-0">
-        <a href="#comments-section" id="header-open-comments" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium apple-glass-subtle text-blue-700 dark:text-blue-300 hover:bg-white/80 dark:hover:bg-zinc-800 transition" title="Ir a comentarios">
-          <span>💬</span>
-          <span id="header-open-count">0 abiertos</span>
+  <!-- Slim Interactive Sticky Navbar -->
+  <nav class="sticky top-0 z-30 glass-panel border-x-0 border-t-0 px-4 py-2 sm:px-6" aria-label="Navegación principal">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- Left: Brand + Live Active Context + Quick Stepper -->
+      <div class="flex items-center gap-2 min-w-0">
+        <a href="#top" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#1D1D1F] text-white dark:bg-[#F5F5F7] dark:text-[#1D1D1F] shrink-0">
+          <span>Europa 2027</span>
         </a>
-        <button type="button" id="theme-toggle" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium apple-glass-subtle text-slate-700 dark:text-zinc-200 hover:bg-white/80 dark:hover:bg-zinc-800 transition" aria-label="Alternar modo nocturno">
-          <span id="theme-toggle-icon">🌙</span>
-          <span id="theme-toggle-label" class="hidden sm:inline">Modo nocturno</span>
-        </button>
-      </div>
-    </header>
-  </div>
-
-  <!-- Compact KPIs & Latest Update Bar -->
-  <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-5 space-y-3">
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-      <div class="apple-glass rounded-2xl px-3.5 py-2.5">
-        <div class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-semibold">Duración</div>
-        <div class="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">15 noches · Hub MAD</div>
-      </div>
-      <div class="apple-glass rounded-2xl px-3.5 py-2.5">
-        <div class="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-semibold">Trenes</div>
-        <div class="text-sm font-semibold text-slate-900 dark:text-white mt-0.5" id="kpi-trains">7 tramos</div>
-      </div>
-      <div class="apple-glass rounded-2xl px-3.5 py-2.5">
-        <div class="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold">Vuelos</div>
-        <div class="text-sm font-semibold text-slate-900 dark:text-white mt-0.5" id="kpi-flights">2 directos</div>
-      </div>
-      <div class="apple-glass rounded-2xl px-3.5 py-2.5">
-        <div class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-semibold">Tránsito neto</div>
-        <div class="text-sm font-semibold text-slate-900 dark:text-white mt-0.5" id="kpi-transit">19 h 58 min</div>
-      </div>
-      <div class="apple-glass rounded-2xl px-3.5 py-2.5 col-span-2 sm:col-span-1">
-        <div class="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">Transporte est.</div>
-        <div class="text-sm font-semibold text-slate-900 dark:text-white mt-0.5" id="kpi-cost">€284 – €461</div>
-      </div>
-    </div>
-
-    <div class="apple-glass rounded-2xl px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-900/85 dark:bg-white/15 text-white shrink-0">Actualización</span>
-        <span id="latest-update-text" class="text-slate-600 dark:text-zinc-300 truncate">Cargando historial de cambios...</span>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <span id="db-status-pill" class="hidden px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">Modo lectura (sin BD)</span>
-        <button type="button" id="toggle-updates-btn" class="px-3 py-1 rounded-full apple-glass-subtle text-slate-700 dark:text-zinc-200 font-medium hover:bg-white/80 dark:hover:bg-zinc-800/80 transition">
-          Historial
-        </button>
-      </div>
-    </div>
-
-    <!-- Collapsible Updates Drawer -->
-    <div id="updates-drawer" class="hidden mt-2.5 apple-glass rounded-2xl p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
-      <div class="lg:col-span-7">
-        <div class="text-xs font-semibold text-slate-800 dark:text-zinc-200 mb-2">Cambios recientes del itinerario</div>
-        <ul id="updates-list" class="space-y-2 text-xs max-h-40 overflow-y-auto custom-scroll pr-1"></ul>
-      </div>
-      <form id="update-form" class="lg:col-span-5 flex flex-col gap-2">
-        <div class="text-xs font-semibold text-slate-800 dark:text-zinc-200">Registrar actualización del plan</div>
-        <input type="text" id="update-summary" maxlength="240" required placeholder="Ej. Se ajustó horario de Pompeya a 09:00–13:30" class="w-full px-3 py-2 text-xs rounded-xl apple-glass-subtle text-slate-900 dark:text-zinc-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[11px] text-slate-500 dark:text-zinc-400">Usa tu nombre guardado abajo</span>
-          <button type="submit" class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition">Publicar cambio</button>
+        <div class="flex items-center gap-1 glass-subtle rounded-full p-0.5 max-w-[230px] sm:max-w-xs">
+          <button type="button" id="nav-prev" class="apple-btn w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#1D1D1F] dark:text-white shrink-0" title="Elemento anterior">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <a href="#map-section" id="nav-active-context" class="px-2 py-0.5 text-[11px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] truncate hover:text-[#007AFF] dark:hover:text-[#0A84FF] transition" title="Ir al elemento activo en el mapa">
+            Tramo 1 · MAD → MIL
+          </a>
+          <button type="button" id="nav-next" class="apple-btn w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#1D1D1F] dark:text-white shrink-0" title="Siguiente elemento">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
         </div>
-      </form>
+      </div>
+
+      <!-- Center: Segmented Section Jumpers -->
+      <div class="segmented-track flex items-center gap-0.5">
+        <a href="#map-section" class="apple-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-white shadow-sm">
+          <svg class="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>
+          <span>Mapa</span>
+        </a>
+        <a href="#comments-section" id="header-open-comments" class="apple-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D] hover:text-[#1D1D1F] dark:hover:text-white">
+          <svg class="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Comentarios</span>
+          <span id="header-open-count" class="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums bg-[#007AFF]/15 text-[#007AFF] dark:text-[#0A84FF]">0</span>
+        </a>
+      </div>
+
+      <!-- Right: Theme Toggle -->
+      <button type="button" id="theme-toggle" class="apple-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold glass-subtle text-[#1D1D1F] dark:text-[#F5F5F7]" aria-label="Cambiar modo nocturno">
+        <span id="theme-icon" class="inline-flex items-center"></span>
+        <span id="theme-label" class="hidden sm:inline">Modo nocturno</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Non-Sticky Trip Overview & KPIs (scrolls away naturally) -->
+  <header id="top" class="px-4 pt-4 sm:px-6">
+    <div class="max-w-7xl mx-auto flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-semibold text-[#007AFF] dark:text-[#0A84FF]">30 abr – 15 may 2027</span>
+          <span class="text-xs text-[#6E6E73] dark:text-[#98989D]">· 15 noches · Ida 30 abr 23:00 · Regreso 15 may 13:00</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-semibold tracking-[-0.024em] text-[#1D1D1F] dark:text-white mt-0.5">
+          Circuito Histórico-Arquitectónico: Italia, Oporto y Madrid
+        </h1>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div class="glass-panel rounded-2xl px-3 py-2">
+          <div class="text-[10px] uppercase tracking-wider text-[#6E6E73] dark:text-[#98989D] font-semibold">Duración</div>
+          <div class="text-sm font-semibold tabular-nums text-[#1D1D1F] dark:text-white">15 noches</div>
+        </div>
+        <div class="glass-panel rounded-2xl px-3 py-2">
+          <div class="text-[10px] uppercase tracking-wider text-[#007AFF] dark:text-[#0A84FF] font-semibold">Tramos tren</div>
+          <div class="text-sm font-semibold tabular-nums text-[#1D1D1F] dark:text-white" id="kpi-trains">7 tramos</div>
+        </div>
+        <div class="glass-panel rounded-2xl px-3 py-2">
+          <div class="text-[10px] uppercase tracking-wider text-[#FF9500] font-semibold">Vuelos</div>
+          <div class="text-sm font-semibold tabular-nums text-[#1D1D1F] dark:text-white" id="kpi-flights">2 directos</div>
+        </div>
+        <div class="glass-panel rounded-2xl px-3 py-2">
+          <div class="text-[10px] uppercase tracking-wider text-[#6E6E73] dark:text-[#98989D] font-semibold">Tránsito neto</div>
+          <div class="text-sm font-semibold tabular-nums text-[#1D1D1F] dark:text-white" id="kpi-transit">19 h 58 min</div>
+        </div>
+        <div class="glass-panel rounded-2xl px-3 py-2">
+          <div class="text-[10px] uppercase tracking-wider text-[#34C759] font-semibold">Transporte est.</div>
+          <div class="text-sm font-semibold tabular-nums text-[#1D1D1F] dark:text-white" id="kpi-cost">€284 – €461</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Latest Plan Updates Banner -->
+  <div class="px-4 pt-3 sm:px-6">
+    <div class="max-w-7xl mx-auto glass-panel rounded-2xl px-4 py-2.5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#1D1D1F] dark:bg-[#F5F5F7] text-white dark:text-[#1D1D1F] text-[11px] font-semibold shrink-0">Actualización</span>
+          <span id="latest-update-text" class="text-[#3A3A3C] dark:text-[#D1D1D6] truncate">Cargando historial de cambios...</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span id="db-status-pill" class="hidden px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FF9500]/15 text-[#B25000] dark:text-[#FF9F0A] border border-[#FF9500]/25">Modo lectura (sin BD)</span>
+          <button type="button" id="toggle-updates-btn" class="apple-btn px-3 py-1 rounded-full glass-subtle text-[#1D1D1F] dark:text-[#F5F5F7] font-medium">
+            Historial
+          </button>
+        </div>
+      </div>
+
+      <!-- Collapsible Updates Drawer -->
+      <div id="updates-drawer" class="hidden mt-3 pt-3 border-t border-black/5 dark:border-white/10 grid grid-cols-1 lg:grid-cols-12 gap-3 animate-apple-in">
+        <div class="lg:col-span-7 glass-subtle rounded-2xl p-3">
+          <div class="text-xs font-semibold text-[#1D1D1F] dark:text-white mb-2">Cambios recientes del itinerario</div>
+          <ul id="updates-list" class="space-y-1.5 text-xs max-h-40 overflow-y-auto custom-scroll"></ul>
+        </div>
+        <form id="update-form" class="lg:col-span-5 glass-subtle rounded-2xl p-3 flex flex-col gap-2">
+          <div class="text-xs font-semibold text-[#1D1D1F] dark:text-white">Registrar actualización del plan</div>
+          <input type="text" id="update-summary" maxlength="240" required placeholder="Ej. Se ajustó horario de Pompeya a 09:00–13:30" class="w-full px-3 py-1.5 text-xs rounded-xl bg-white/80 dark:bg-black/40 border border-black/10 dark:border-white/10 text-[#1D1D1F] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] text-[#6E6E73] dark:text-[#98989D]">Usa tu nombre guardado abajo</span>
+            <button type="submit" class="apple-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#007AFF] text-white hover:opacity-90">Publicar</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
   <!-- Main Workspace -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
 
     <!-- Left/Top: Map Canvas + Controls -->
-    <section class="lg:col-span-8 flex flex-col apple-glass rounded-3xl overflow-hidden">
+    <section id="map-section" class="scroll-mt-16 lg:col-span-8 flex flex-col glass-panel rounded-[22px] overflow-hidden">
 
       <!-- Map Toolbar -->
-      <div class="px-4 py-2.5 border-b border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-2">
-        <!-- Segmented Mode Filters -->
-        <div class="inline-flex items-center p-1 rounded-full apple-glass-subtle gap-0.5" role="group" aria-label="Filtrar por transporte">
-          <button type="button" data-filter="all" class="filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm transition">Todos (9)</button>
-          <button type="button" data-filter="train" class="filter-btn px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">Trenes (7)</button>
-          <button type="button" data-filter="flight" class="filter-btn px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">Vuelos (2)</button>
+      <div class="px-4 py-2.5 border-b border-black/5 dark:border-white/10 flex flex-wrap items-center justify-between gap-2">
+        <!-- Apple Segmented Control: Mode Filters -->
+        <div class="segmented-track flex items-center gap-0.5 flex-wrap" role="group" aria-label="Filtrar por transporte">
+          <button type="button" data-filter="all" class="filter-btn apple-btn px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-white shadow-sm">Todos (9)</button>
+          <button type="button" data-filter="train" class="filter-btn apple-btn px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D]">Trenes (7)</button>
+          <button type="button" data-filter="flight" class="filter-btn apple-btn px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D]">Vuelos (2)</button>
         </div>
 
         <!-- Region Zoom Presets -->
         <div class="flex items-center gap-1.5 flex-wrap">
-          <button type="button" data-preset="full" class="preset-btn px-3 py-1 rounded-full text-xs font-medium apple-glass-subtle text-slate-700 dark:text-zinc-200 hover:bg-white/80 dark:hover:bg-zinc-800 transition">Ruta completa</button>
-          <button type="button" data-preset="italy" class="preset-btn px-3 py-1 rounded-full text-xs font-medium apple-glass-subtle text-slate-700 dark:text-zinc-200 hover:bg-white/80 dark:hover:bg-zinc-800 transition">Italia</button>
-          <button type="button" data-preset="campania" class="preset-btn px-3 py-1 rounded-full text-xs font-medium apple-glass-subtle text-slate-700 dark:text-zinc-200 hover:bg-white/80 dark:hover:bg-zinc-800 transition">Campania</button>
-          <button type="button" data-preset="iberia" class="preset-btn px-3 py-1 rounded-full text-xs font-medium apple-glass-subtle text-slate-700 dark:text-zinc-200 hover:bg-white/80 dark:hover:bg-zinc-800 transition">Ibérica</button>
+          <button type="button" data-preset="full" class="preset-btn apple-btn px-3 py-1 rounded-full text-xs font-medium glass-subtle text-[#1D1D1F] dark:text-[#F5F5F7]">Ruta completa</button>
+          <button type="button" data-preset="italy" class="preset-btn apple-btn px-3 py-1 rounded-full text-xs font-medium glass-subtle text-[#1D1D1F] dark:text-[#F5F5F7]">Italia</button>
+          <button type="button" data-preset="campania" class="preset-btn apple-btn px-3 py-1 rounded-full text-xs font-medium glass-subtle text-[#1D1D1F] dark:text-[#F5F5F7]">Campania</button>
+          <button type="button" data-preset="iberia" class="preset-btn apple-btn px-3 py-1 rounded-full text-xs font-medium glass-subtle text-[#1D1D1F] dark:text-[#F5F5F7]">Ibérica</button>
         </div>
       </div>
 
       <!-- Map Container -->
-      <div class="relative w-full bg-sky-100/40 dark:bg-zinc-950/60 transition-colors" style="height: 520px;">
+      <div class="relative w-full bg-[#EAF2FB]/60 dark:bg-[#090D16] transition-colors duration-300" style="height: 520px;">
         <svg id="route-map" class="w-full h-full block select-none" aria-label="Mapa interactivo de la ruta europea"></svg>
 
         <!-- Loading / Error Banner -->
-        <div id="map-status" class="absolute inset-0 flex items-center justify-center apple-glass text-sm font-medium text-slate-700 dark:text-zinc-200">
+        <div id="map-status" class="absolute inset-0 flex items-center justify-center glass-panel text-sm font-medium text-[#1D1D1F] dark:text-[#F5F5F7]">
           Cargando cartografía vectorial de Europa...
         </div>
 
         <!-- Hover Tooltip -->
-        <div id="map-tooltip" class="hidden pointer-events-none absolute z-20 apple-glass text-slate-900 dark:text-white text-xs rounded-2xl px-3 py-2 shadow-xl max-w-xs"></div>
+        <div id="map-tooltip" class="hidden pointer-events-none absolute z-20 glass-panel text-[#1D1D1F] dark:text-white text-xs rounded-2xl px-3 py-2 max-w-xs"></div>
 
-        <!-- Floating Zoom Controls -->
-        <div class="absolute top-3 right-3 flex flex-col gap-1 apple-glass rounded-2xl p-1">
-          <button type="button" id="zoom-in" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/60 dark:hover:bg-white/10 font-semibold text-slate-700 dark:text-zinc-200 transition" title="Acercar">+</button>
-          <button type="button" id="zoom-out" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/60 dark:hover:bg-white/10 font-semibold text-slate-700 dark:text-zinc-200 transition" title="Alejar">−</button>
-          <button type="button" id="zoom-reset" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/60 dark:hover:bg-white/10 text-[11px] font-semibold text-slate-600 dark:text-zinc-300 transition" title="Restablecer vista">1:1</button>
+        <!-- Zoom Controls -->
+        <div class="absolute top-3 right-3 flex flex-col gap-0.5 glass-panel rounded-2xl p-1">
+          <button type="button" id="zoom-in" class="apple-btn w-8 h-8 flex items-center justify-center rounded-xl hover:bg-black/5 dark:hover:bg-white/10 font-medium text-[#1D1D1F] dark:text-white" title="Acercar">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button type="button" id="zoom-out" class="apple-btn w-8 h-8 flex items-center justify-center rounded-xl hover:bg-black/5 dark:hover:bg-white/10 font-medium text-[#1D1D1F] dark:text-white" title="Alejar">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+          </button>
+          <button type="button" id="zoom-reset" class="apple-btn w-8 h-8 flex items-center justify-center rounded-xl hover:bg-black/5 dark:hover:bg-white/10 text-[10px] font-semibold tabular-nums text-[#6E6E73] dark:text-[#98989D]" title="Restablecer vista">1:1</button>
         </div>
 
-        <!-- Floating Legend -->
-        <div class="absolute bottom-3 left-3 apple-glass rounded-2xl px-3.5 py-2 text-[11px] flex flex-wrap items-center gap-3">
+        <!-- Legend -->
+        <div class="absolute bottom-3 left-3 glass-panel rounded-full px-3.5 py-1.5 text-[11px] flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1.5">
-            <span class="inline-block w-4 h-0.5 rounded-full bg-blue-600"></span>
-            <span class="text-slate-700 dark:text-zinc-200 font-medium">Alta Velocidad</span>
+            <span class="inline-block w-4 h-0.5 rounded-full bg-[#007AFF]"></span>
+            <span class="text-[#1D1D1F] dark:text-[#F5F5F7] font-medium">Tren AV</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span class="inline-block w-4 h-0.5 rounded-full bg-emerald-600"></span>
-            <span class="text-slate-700 dark:text-zinc-200 font-medium">Regional / Celta</span>
+            <span class="inline-block w-4 h-0.5 rounded-full bg-[#34C759]"></span>
+            <span class="text-[#1D1D1F] dark:text-[#F5F5F7] font-medium">Regional / Celta</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span class="inline-block w-4 border-t-2 border-dashed border-amber-500"></span>
-            <span class="text-slate-700 dark:text-zinc-200 font-medium">Vuelo directo</span>
+            <span class="inline-block w-4 border-t-2 border-dashed border-[#FF9500]"></span>
+            <span class="text-[#1D1D1F] dark:text-[#F5F5F7] font-medium">Vuelo</span>
           </div>
         </div>
 
-        <!-- Floating Step Player Bar -->
-        <div class="absolute bottom-3 right-3 apple-glass rounded-full px-2 py-1.5 flex items-center gap-1">
-          <button type="button" id="btn-prev" class="px-2.5 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-zinc-200 hover:bg-white/60 dark:hover:bg-white/10 transition">◀ Ant.</button>
-          <button type="button" id="btn-play" class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition">▶ Recorrer</button>
-          <button type="button" id="btn-next" class="px-2.5 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-zinc-200 hover:bg-white/60 dark:hover:bg-white/10 transition">Sig. ▶</button>
+        <!-- Step Player Bar -->
+        <div class="absolute bottom-3 right-3 glass-panel rounded-full px-2 py-1 flex items-center gap-1">
+          <button type="button" id="btn-prev" class="apple-btn px-2.5 py-1 rounded-full text-xs font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] hover:bg-black/5 dark:hover:bg-white/10">Ant.</button>
+          <button type="button" id="btn-play" class="apple-btn px-3 py-1 rounded-full text-xs font-semibold bg-[#007AFF] text-white shadow-sm">Recorrer</button>
+          <button type="button" id="btn-next" class="apple-btn px-2.5 py-1 rounded-full text-xs font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] hover:bg-black/5 dark:hover:bg-white/10">Sig.</button>
         </div>
       </div>
 
       <!-- Bottom Quick Route Strip -->
-      <div class="px-4 py-2.5 border-t border-slate-200/60 dark:border-white/10 overflow-x-auto custom-scroll">
+      <div class="px-4 py-2.5 border-t border-black/5 dark:border-white/10 overflow-x-auto custom-scroll">
         <div id="route-strip" class="flex items-center gap-1.5 min-w-max text-xs"></div>
       </div>
     </section>
@@ -280,86 +378,87 @@
     <aside class="lg:col-span-4 flex flex-col gap-4">
 
       <!-- Active Selection Card -->
-      <div id="detail-card" class="apple-glass rounded-3xl p-4 transition-colors">
+      <div id="detail-card" class="glass-panel rounded-[22px] p-4">
         <div class="flex items-center justify-between gap-2">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-400">Detalle seleccionado</div>
-          <button type="button" id="btn-jump-comment" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline transition">
-            💬 Comentar esto
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#98989D]">Detalle de selección</div>
+          <button type="button" id="btn-jump-comment" class="apple-btn inline-flex items-center gap-1 text-xs font-semibold text-[#007AFF] dark:text-[#0A84FF] hover:opacity-80">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Comentar</span>
           </button>
         </div>
-        <div id="detail-content" class="mt-2.5"></div>
+        <div id="detail-content" class="mt-2 animate-apple-in"></div>
       </div>
 
       <!-- Tabbed List: Legs vs Daily Breakdown -->
-      <div class="apple-glass rounded-3xl flex flex-col overflow-hidden flex-1 min-h-[280px] max-h-[440px] transition-colors">
-        <div class="px-3.5 py-2.5 border-b border-slate-200/60 dark:border-white/10 flex items-center justify-between gap-2">
-          <div class="inline-flex items-center p-0.5 rounded-full apple-glass-subtle gap-0.5" role="tablist">
-            <button type="button" id="tab-legs" class="side-tab px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm transition">Tramos (9)</button>
-            <button type="button" id="tab-days" class="side-tab px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">Por días (16)</button>
+      <div class="glass-panel rounded-[22px] flex flex-col overflow-hidden flex-1 min-h-[300px] max-h-[560px]">
+        <div class="px-3.5 py-2.5 border-b border-black/5 dark:border-white/10 flex items-center justify-between gap-2">
+          <div class="segmented-track flex items-center gap-0.5" role="tablist">
+            <button type="button" id="tab-legs" class="side-tab apple-btn px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-white shadow-sm">Tramos (9)</button>
+            <button type="button" id="tab-days" class="side-tab apple-btn px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D]">Por días (16)</button>
           </div>
-          <span class="text-[11px] text-slate-400 dark:text-zinc-400">Clic para enfocar</span>
+          <span class="text-[11px] text-[#8E8E93]">Clic para desplegar</span>
         </div>
         <div id="legs-list" class="overflow-y-auto custom-scroll p-2 space-y-1"></div>
-        <div id="days-list" class="hidden overflow-y-auto custom-scroll p-2 space-y-1"></div>
+        <div id="days-list" class="hidden overflow-y-auto custom-scroll p-2 space-y-1.5"></div>
       </div>
 
     </aside>
 
     <!-- Bottom Full-Width: Persistent Comments & Feedback -->
-    <section id="comments-section" class="lg:col-span-12 apple-glass rounded-3xl overflow-hidden transition-colors">
-      <div class="px-5 py-4 border-b border-slate-200/60 dark:border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <section id="comments-section" class="scroll-mt-16 lg:col-span-12 glass-panel rounded-[22px] overflow-hidden">
+      <div class="px-4 py-3.5 border-b border-black/5 dark:border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 class="text-base font-semibold tracking-tight text-slate-900 dark:text-white">Comentarios y Revisión del Viaje</h2>
-          <p class="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Selecciona un día, tramo o parada en el mapa para comentar en contexto, o deja una nota general.</p>
+          <h2 class="text-base font-semibold tracking-[-0.015em] text-[#1D1D1F] dark:text-white">Comentarios y Revisión</h2>
+          <p class="text-xs text-[#6E6E73] dark:text-[#98989D]">Selecciona un día, tramo o parada en el mapa para comentar en contexto, o deja una nota general.</p>
         </div>
-        <div class="inline-flex items-center p-1 rounded-full apple-glass-subtle gap-0.5 flex-wrap" role="group" aria-label="Filtrar comentarios">
-          <button type="button" data-comment-filter="all" class="comment-filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm transition">Todos (<span id="count-all">0</span>)</button>
-          <button type="button" data-comment-filter="open" class="comment-filter-btn px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">Abiertos (<span id="count-open">0</span>)</button>
-          <button type="button" data-comment-filter="resolved" class="comment-filter-btn px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">Resueltos (<span id="count-resolved">0</span>)</button>
-          <button type="button" data-comment-filter="current" class="comment-filter-btn px-3 py-1 rounded-full text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">Actual (<span id="count-current">0</span>)</button>
+        <div class="segmented-track flex items-center gap-0.5 flex-wrap" role="group" aria-label="Filtrar comentarios">
+          <button type="button" data-comment-filter="all" class="comment-filter-btn apple-btn px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-white shadow-sm">Todos (<span id="count-all">0</span>)</button>
+          <button type="button" data-comment-filter="open" class="comment-filter-btn apple-btn px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D]">Abiertos (<span id="count-open">0</span>)</button>
+          <button type="button" data-comment-filter="resolved" class="comment-filter-btn apple-btn px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D]">Resueltos (<span id="count-resolved">0</span>)</button>
+          <button type="button" data-comment-filter="current" class="comment-filter-btn apple-btn px-3 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#98989D]">Actual (<span id="count-current">0</span>)</button>
         </div>
       </div>
 
-      <div class="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
         <!-- Comment Form -->
-        <form id="comment-form" class="lg:col-span-4 apple-glass-subtle rounded-2xl p-4 flex flex-col gap-3 self-start">
+        <form id="comment-form" class="lg:col-span-4 glass-subtle rounded-2xl p-4 flex flex-col gap-3 self-start">
           <div>
-            <label for="comment-author" class="block text-xs font-semibold text-slate-700 dark:text-zinc-200 mb-1">Tu nombre</label>
-            <input type="text" id="comment-author" maxlength="80" required placeholder="Ej. César" class="w-full px-3 py-2 text-xs bg-white/80 dark:bg-zinc-900/70 text-slate-900 dark:text-zinc-100 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+            <label for="comment-author" class="block text-xs font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] mb-1">Tu nombre</label>
+            <input type="text" id="comment-author" maxlength="80" required placeholder="Ej. César" class="w-full px-3 py-2 text-xs rounded-xl bg-white/85 dark:bg-black/40 border border-black/10 dark:border-white/10 text-[#1D1D1F] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-1">
-              <span class="text-xs font-semibold text-slate-700 dark:text-zinc-200">Contexto</span>
-              <button type="button" id="toggle-general-context" class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline transition">
+              <span class="text-xs font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">Contexto</span>
+              <button type="button" id="toggle-general-context" class="text-[11px] font-semibold text-[#007AFF] dark:text-[#0A84FF] hover:opacity-80">
                 Cambiar a General
               </button>
             </div>
-            <div id="comment-context-badge" class="px-3 py-2 rounded-xl bg-white/80 dark:bg-zinc-900/70 border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-800 dark:text-zinc-100">
+            <div id="comment-context-badge" class="px-3 py-2 rounded-xl bg-white/75 dark:bg-black/30 border border-black/5 dark:border-white/10 text-xs font-medium text-[#1D1D1F] dark:text-white">
               Tramo 1 · MAD → MIL
             </div>
           </div>
 
           <div>
-            <label for="comment-body" class="block text-xs font-semibold text-slate-700 dark:text-zinc-200 mb-1">Comentario o sugerencia</label>
-            <textarea id="comment-body" rows="4" maxlength="2000" required placeholder="Escribe aquí dudas, cambios propuestos, horarios o notas..." class="w-full px-3 py-2 text-xs bg-white/80 dark:bg-zinc-900/70 text-slate-900 dark:text-zinc-100 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-y"></textarea>
-            <div class="flex items-center justify-between mt-1 text-[11px] text-slate-400 dark:text-zinc-500">
+            <label for="comment-body" class="block text-xs font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] mb-1">Comentario</label>
+            <textarea id="comment-body" rows="4" maxlength="2000" required placeholder="Escribe aquí dudas, cambios propuestos, horarios o notas..." class="w-full px-3 py-2 text-xs rounded-xl bg-white/85 dark:bg-black/40 border border-black/10 dark:border-white/10 text-[#1D1D1F] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-y"></textarea>
+            <div class="flex items-center justify-between mt-1 text-[11px] text-[#8E8E93]">
               <span>Texto plano</span>
-              <span id="comment-char-count">0 / 2000</span>
+              <span id="comment-char-count" class="tabular-nums">0 / 2000</span>
             </div>
           </div>
 
           <div id="comment-form-feedback" class="hidden text-xs px-3 py-2 rounded-xl"></div>
 
-          <button type="submit" id="comment-submit-btn" class="w-full py-2.5 px-4 rounded-full text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shadow-sm transition">
+          <button type="submit" id="comment-submit-btn" class="apple-btn w-full py-2.5 px-4 rounded-full text-xs font-semibold bg-[#007AFF] text-white hover:opacity-95 disabled:opacity-50 shadow-sm">
             Publicar comentario
           </button>
         </form>
 
         <!-- Comments List -->
         <div class="lg:col-span-8 flex flex-col gap-3">
-          <div id="comments-empty" class="hidden apple-glass-subtle rounded-2xl p-8 text-center text-xs text-slate-500 dark:text-zinc-400">
-            No hay comentarios para este filtro todavía. ¡Sé el primero en dejar feedback!
+          <div id="comments-empty" class="hidden glass-subtle rounded-2xl p-8 text-center text-xs text-[#6E6E73] dark:text-[#98989D]">
+            No hay comentarios para este filtro todavía.
           </div>
           <div id="comments-list" class="space-y-2.5 max-h-[460px] overflow-y-auto custom-scroll pr-1"></div>
         </div>
