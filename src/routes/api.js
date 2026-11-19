@@ -269,4 +269,61 @@ router.post('/updates', async (req, res, next) => {
   }
 });
 
+// GET /api/tiles/:z/:x/:y.png — Same-origin map tile proxy with in-memory cache
+const tileCache = new Map();
+const MAX_TILE_CACHE = 400;
+
+router.get('/tiles/:z/:x/:y.png', async (req, res) => {
+  const z = Number(req.params.z);
+  const x = Number(req.params.x);
+  const y = Number(req.params.y);
+
+  if (
+    !Number.isInteger(z) || z < 0 || z > 18 ||
+    !Number.isInteger(x) || !Number.isInteger(y) ||
+    x < 0 || y < 0 || x >= (1 << z) || y >= (1 << z)
+  ) {
+    return res.status(400).end();
+  }
+
+  const key = `${z}/${x}/${y}`;
+  const cached = tileCache.get(key);
+  if (cached) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(cached);
+  }
+
+  try {
+    let upstream = await fetch(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`, {
+      headers: {
+        'User-Agent': 'ViajeEuropa2027/1.0 (+https://viaje-europa-2027.onrender.com)'
+      }
+    });
+
+    if (!upstream.ok) {
+      upstream = await fetch(
+        `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${z}/${y}/${x}`
+      );
+    }
+
+    if (!upstream.ok) {
+      return res.status(502).end();
+    }
+
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    if (tileCache.size >= MAX_TILE_CACHE) {
+      const firstKey = tileCache.keys().next().value;
+      tileCache.delete(firstKey);
+    }
+    tileCache.set(key, buf);
+
+    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(buf);
+  } catch {
+    return res.status(502).end();
+  }
+});
+
 module.exports = router;

@@ -726,7 +726,7 @@
       enter => enter.append('image')
         .attr('class', 'map-tile')
         .attr('preserveAspectRatio', 'none')
-        .attr('href', d => `https://tile.openstreetmap.org/${d.z}/${d.x}/${d.y}.png`),
+        .attr('href', d => `/api/tiles/${d.z}/${d.x}/${d.y}.png`),
       update => update,
       exit => exit.remove()
     )
