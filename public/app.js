@@ -622,8 +622,8 @@
   const svg = d3.select('#route-map');
   const mapContainer = document.getElementById('route-map').parentElement;
   const statusEl = document.getElementById('map-status');
-  const width = mapContainer.clientWidth || 800;
-  const height = mapContainer.clientHeight || 520;
+  let width = mapContainer.clientWidth || 800;
+  let height = mapContainer.clientHeight || 560;
 
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 
@@ -639,6 +639,27 @@
     .translate([width / 2, height / 2]);
 
   const pathGen = d3.geoPath().projection(projection);
+
+  function resizeMap() {
+    const nextW = mapContainer.clientWidth;
+    const nextH = mapContainer.clientHeight;
+    if (!nextW || !nextH || (nextW === width && nextH === height)) return;
+    width = nextW;
+    height = nextH;
+    svg.attr('viewBox', `0 0 ${width} ${height}`);
+    projection
+      .scale(Math.min(width, height) * 2.55)
+      .translate([width / 2, height / 2]);
+    gCountries.selectAll('path').attr('d', pathGen);
+    renderRoute();
+  }
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => resizeMap());
+    ro.observe(mapContainer);
+  } else {
+    window.addEventListener('resize', resizeMap);
+  }
 
   function stopLabelOffset(d) {
     const dx = (d.id === 'oporto' || d.id === 'vigo' || d.id === 'roma' || d.id === 'sorrento') ? -9 : 9;
