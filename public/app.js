@@ -1325,86 +1325,143 @@
     return wrapper;
   }
 
+  const STAY_GROUPS = [
+    { key: 'fly-out', label: 'Vuelo', nights: 0, stopId: 'madrid-start', color: '#8E8E93', dayIds: ['d1'] },
+    { key: 'mad-1', label: 'MAD · 1n', nights: 1, stopId: 'madrid-start', color: '#FF9500', dayIds: ['d2'] },
+    { key: 'mil', label: 'MIL · 2n', nights: 2, stopId: 'milan', color: '#007AFF', dayIds: ['d3', 'd4'] },
+    { key: 'rom', label: 'ROM · 3n', nights: 3, stopId: 'roma', color: '#5856D6', dayIds: ['d5', 'd6', 'd7'] },
+    { key: 'nap', label: 'NAP · 2n', nights: 2, stopId: 'napoles', color: '#34C759', dayIds: ['d8', 'd9'] },
+    { key: 'sor', label: 'SOR · 2n', nights: 2, stopId: 'sorrento', color: '#00C7BE', dayIds: ['d10', 'd11'] },
+    { key: 'opo', label: 'OPO · 3n', nights: 3, stopId: 'oporto', color: '#AF52DE', dayIds: ['d12', 'd13', 'd14'] },
+    { key: 'mad-2', label: 'MAD · 1n', nights: 1, stopId: 'madrid-end', color: '#FF9500', dayIds: ['d15'] },
+    { key: 'fly-back', label: 'Regreso', nights: 0, stopId: 'madrid-end', color: '#8E8E93', dayIds: ['d16'] }
+  ];
+
   function renderDaysList() {
     const container = document.getElementById('days-list');
     container.textContent = '';
 
-    DAYS.forEach(day => {
-      const isActive = state.selectedDayId === day.id;
-      const isExpanded = state.expandedDayId === day.id;
-      const openCount = getOpenCommentCount('day', day.id);
+    const dayById = Object.fromEntries(DAYS.map(d => [d.id, d]));
 
-      const itemWrap = document.createElement('div');
+    STAY_GROUPS.forEach(group => {
+      const groupRow = document.createElement('div');
+      groupRow.className = 'flex items-stretch gap-1.5';
 
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.dataset.dayId = day.id;
-      btn.className = `day-item apple-btn w-full text-left px-3 py-2.5 rounded-xl transition ${
-        isActive
-          ? 'bg-[#1D1D1F] text-white dark:bg-[#F5F5F7] dark:text-[#1D1D1F] shadow-sm'
-          : 'hover:bg-white/60 dark:hover:bg-white/5 text-[#1D1D1F] dark:text-[#F5F5F7]'
-      }`;
+      const daysCol = document.createElement('div');
+      daysCol.className = 'flex-1 min-w-0 space-y-1';
 
-      const top = document.createElement('div');
-      top.className = 'flex items-center justify-between gap-2';
+      group.dayIds.forEach(dayId => {
+        const day = dayById[dayId];
+        if (!day) return;
 
-      const leftTop = document.createElement('div');
-      leftTop.className = 'flex items-center gap-1.5 min-w-0';
+        const isActive = state.selectedDayId === day.id;
+        const isExpanded = state.expandedDayId === day.id;
+        const openCount = getOpenCommentCount('day', day.id);
 
-      const dayTitle = document.createElement('span');
-      dayTitle.className = 'text-xs font-bold';
-      dayTitle.textContent = `Día ${day.num} · ${day.date}`;
-      leftTop.appendChild(dayTitle);
+        const itemWrap = document.createElement('div');
 
-      if (openCount > 0) {
-        const cBadge = document.createElement('span');
-        cBadge.className = `inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-          isActive ? 'bg-[#007AFF] text-white' : 'bg-[#007AFF]/15 text-[#007AFF] dark:text-[#0A84FF]'
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.dayId = day.id;
+        btn.className = `day-item apple-btn w-full text-left px-3 py-2.5 rounded-xl transition ${
+          isActive
+            ? 'bg-[#1D1D1F] text-white dark:bg-[#F5F5F7] dark:text-[#1D1D1F] shadow-sm'
+            : 'hover:bg-white/60 dark:hover:bg-white/5 text-[#1D1D1F] dark:text-[#F5F5F7]'
         }`;
-        cBadge.textContent = `${openCount}`;
-        leftTop.appendChild(cBadge);
-      }
 
-      const rightTop = document.createElement('div');
-      rightTop.className = 'flex items-center gap-1.5 shrink-0';
+        const top = document.createElement('div');
+        top.className = 'flex items-center justify-between gap-2';
 
-      const citySpan = document.createElement('span');
-      citySpan.className = `text-[11px] font-semibold truncate max-w-[130px] ${
-        isActive ? 'text-[#64D2FF] dark:text-[#007AFF]' : 'text-[#007AFF] dark:text-[#0A84FF]'
-      }`;
-      citySpan.textContent = day.city;
+        const leftTop = document.createElement('div');
+        leftTop.className = 'flex items-center gap-1.5 min-w-0';
 
-      const chev = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      chev.setAttribute('viewBox', '0 0 24 24');
-      chev.setAttribute('fill', 'none');
-      chev.setAttribute('stroke', 'currentColor');
-      chev.setAttribute('stroke-width', '2');
-      chev.setAttribute('stroke-linecap', 'round');
-      chev.setAttribute('stroke-linejoin', 'round');
-      chev.setAttribute('class', `w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`);
-      chev.innerHTML = '<path d="m6 9 6 6 6-6"/>';
+        const dayTitle = document.createElement('span');
+        dayTitle.className = 'text-xs font-bold';
+        dayTitle.textContent = `Día ${day.num} · ${day.date}`;
+        leftTop.appendChild(dayTitle);
 
-      rightTop.appendChild(citySpan);
-      rightTop.appendChild(chev);
+        if (openCount > 0) {
+          const cBadge = document.createElement('span');
+          cBadge.className = `inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+            isActive ? 'bg-[#007AFF] text-white' : 'bg-[#007AFF]/15 text-[#007AFF] dark:text-[#0A84FF]'
+          }`;
+          cBadge.textContent = `${openCount}`;
+          leftTop.appendChild(cBadge);
+        }
 
-      top.appendChild(leftTop);
-      top.appendChild(rightTop);
+        const rightTop = document.createElement('div');
+        rightTop.className = 'flex items-center gap-1 shrink-0';
 
-      const amEl = document.createElement('div');
-      amEl.className = `text-[11px] mt-1 line-clamp-1 ${
-        isActive ? 'text-white/75 dark:text-black/70' : 'text-[#6E6E73] dark:text-[#98989D]'
-      }`;
-      amEl.textContent = day.am;
+        const citySpan = document.createElement('span');
+        citySpan.className = `text-[11px] font-semibold truncate max-w-[115px] ${
+          isActive ? 'text-[#64D2FF] dark:text-[#007AFF]' : 'text-[#007AFF] dark:text-[#0A84FF]'
+        }`;
+        citySpan.textContent = day.city;
 
-      btn.appendChild(top);
-      btn.appendChild(amEl);
-      itemWrap.appendChild(btn);
+        const chev = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        chev.setAttribute('viewBox', '0 0 24 24');
+        chev.setAttribute('fill', 'none');
+        chev.setAttribute('stroke', 'currentColor');
+        chev.setAttribute('stroke-width', '2');
+        chev.setAttribute('stroke-linecap', 'round');
+        chev.setAttribute('stroke-linejoin', 'round');
+        chev.setAttribute('class', `w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`);
+        chev.innerHTML = '<path d="m6 9 6 6 6-6"/>';
 
-      if (isExpanded) {
-        itemWrap.appendChild(buildDayScheduleCard(day));
-      }
+        rightTop.appendChild(citySpan);
+        rightTop.appendChild(chev);
 
-      container.appendChild(itemWrap);
+        top.appendChild(leftTop);
+        top.appendChild(rightTop);
+
+        const amEl = document.createElement('div');
+        amEl.className = `text-[11px] mt-1 line-clamp-1 ${
+          isActive ? 'text-white/75 dark:text-black/70' : 'text-[#6E6E73] dark:text-[#98989D]'
+        }`;
+        amEl.textContent = day.am;
+
+        btn.appendChild(top);
+        btn.appendChild(amEl);
+        itemWrap.appendChild(btn);
+
+        if (isExpanded) {
+          itemWrap.appendChild(buildDayScheduleCard(day));
+        }
+
+        daysCol.appendChild(itemWrap);
+      });
+
+      // Right-side visual stay-grouping bar
+      const stayBar = document.createElement('button');
+      stayBar.type = 'button';
+      stayBar.title = group.nights > 0
+        ? `${group.label} (${group.nights} ${group.nights === 1 ? 'noche' : 'noches'}) — clic para enfocar`
+        : `${group.label} — clic para enfocar`;
+      stayBar.className = 'apple-btn w-7 shrink-0 rounded-xl flex flex-col items-center justify-center gap-1 py-1.5 glass-subtle hover:opacity-90 transition';
+      stayBar.style.borderColor = `${group.color}40`;
+      stayBar.style.background = state.darkMode ? `${group.color}18` : `${group.color}12`;
+      stayBar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectStop(group.stopId);
+      });
+
+      const rail = document.createElement('span');
+      rail.className = 'w-1 flex-1 rounded-full min-h-[10px]';
+      rail.style.backgroundColor = group.color;
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'text-[9px] font-bold tracking-tight tabular-nums select-none';
+      labelEl.style.color = group.color;
+      labelEl.style.writingMode = 'vertical-rl';
+      labelEl.style.transform = 'rotate(180deg)';
+      labelEl.textContent = group.label;
+
+      stayBar.appendChild(rail);
+      stayBar.appendChild(labelEl);
+
+      groupRow.appendChild(daysCol);
+      groupRow.appendChild(stayBar);
+      container.appendChild(groupRow);
     });
   }
 
